@@ -2,11 +2,10 @@
   "name": "daily-recipe",
   "version": "1.0.0",
   "description": "每日食谱推荐系统",
-  "main": "index.js",
+  "main": "src/worker.js",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "build": "mkdir -p dist && cp -r public/* dist/ && cp -r functions dist/functions",
     "deploy": "wrangler deploy"
   },
   "dependencies": {
