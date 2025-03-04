@@ -1,5 +1,7 @@
 // API基础URL
-const API_BASE_URL = window.location.origin;
+const API_BASE_URL = process.env.NODE_ENV === 'production' 
+  ? 'https://daily-recipe.fengyx91.workers.dev'  // 替换为你的 Workers 域名
+  : 'http://localhost:8787';
 
 // 调试信息
 console.log('API基础URL:', API_BASE_URL);
@@ -12,7 +14,8 @@ async function fetchAPI(endpoint, options = {}) {
       headers: {
         'Content-Type': 'application/json',
         ...options.headers
-      }
+      },
+      credentials: 'include' // 改为 include 以支持跨域 cookie
     });
 
     if (!response.ok) {

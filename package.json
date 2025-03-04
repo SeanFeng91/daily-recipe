@@ -7,13 +7,15 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "build": "cp -r public dist"
+    "build": "cp -r public dist",
+    "serve": "http-server public -p 8080 --cors"
   },
   "dependencies": {
     "hono": "^4.0.8"
   },
   "devDependencies": {
     "wrangler": "^3.30.1",
-    "@cloudflare/workers-types": "^4.20240208.0"
+    "@cloudflare/workers-types": "^4.20240208.0",
+    "http-server": "^14.1.1"
   }
 } 

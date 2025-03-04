@@ -1,8 +1,16 @@
 import { Hono } from 'hono';
 import { jwt } from 'hono/jwt';
-import { serveStatic } from 'hono/serve-static';
+import { cors } from 'hono/cors';
 
 const app = new Hono();
+
+// CORS 中间件 - 允许前端页面访问
+app.use('*', cors({
+  origin: ['https://daily-recipe.pages.dev', 'http://localhost:8080'], // 允许的域名
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+}));
 
 // 登录API
 app.post('/api/login', async (c) => {
@@ -43,9 +51,6 @@ app.use('/api/*', async (c, next) => {
   });
   return jwtMiddleware(c, next);
 });
-
-// 静态文件服务
-app.get('/*', serveStatic({ root: './public' }));
 
 // AI推荐API
 app.get('/api/recommendations', async (c) => {
@@ -239,6 +244,7 @@ app.get('/api/health', async (c) => {
       }
     });
   } catch (error) {
+    console.error('健康检查失败:', error);
     return c.json({
       status: 'error',
       error: error.message,
@@ -247,6 +253,4 @@ app.get('/api/health', async (c) => {
   }
 });
 
-export default {
-  fetch: app.fetch
-}; 
+export default app; 
