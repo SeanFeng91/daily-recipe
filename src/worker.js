@@ -49,16 +49,33 @@ app.get('/*', serveStatic({ root: './public' }));
 
 // AI推荐API
 app.get('/api/recommendations', async (c) => {
-  const prompt = `作为一个专业的中餐厨师，请推荐3道今天适合烹饪的菜品。
-  对于每道菜，请提供：
-  1. 菜名
-  2. 简短描述
-  3. 所需时间
-  4. 难度级别
-  5. 主要食材
-  请用JSON格式返回，确保包含上述所有信息。`;
-
   try {
+    // 先尝试从KV中获取今天的推荐
+    const date = new Date().toISOString().split('T')[0];
+    const cached = await c.env.RECIPES_KV.get(`recommendations:${date}`);
+    
+    if (cached) {
+      return c.json(JSON.parse(cached));
+    }
+
+    const prompt = `作为一个专业的中餐厨师，请推荐3道今天适合烹饪的菜品。
+    对于每道菜，请提供：
+    1. 菜名
+    2. 简短描述
+    3. 所需时间（以分钟为单位）
+    4. 难度级别（简单/中等/困难）
+    5. 主要食材
+    请用JSON格式返回，格式如下：
+    [
+      {
+        "菜名": "菜品名称",
+        "简短描述": "描述文本",
+        "所需时间": "30分钟",
+        "难度级别": "简单",
+        "主要食材": ["食材1", "食材2"]
+      }
+    ]`;
+
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -70,20 +87,33 @@ app.get('/api/recommendations', async (c) => {
         messages: [{
           role: "user",
           content: prompt
-        }]
+        }],
+        temperature: 0.7,
+        max_tokens: 1000
       })
     });
 
+    if (!response.ok) {
+      throw new Error('AI服务调用失败');
+    }
+
     const data = await response.json();
+    if (!data.choices?.[0]?.message?.content) {
+      throw new Error('AI响应格式错误');
+    }
+
     const recommendations = JSON.parse(data.choices[0].message.content);
-    
+    if (!Array.isArray(recommendations) || recommendations.length === 0) {
+      throw new Error('推荐数据格式错误');
+    }
+
     // 存储到KV中
-    const date = new Date().toISOString().split('T')[0];
     await c.env.RECIPES_KV.put(`recommendations:${date}`, JSON.stringify(recommendations));
 
     return c.json(recommendations);
   } catch (error) {
-    return c.json({ error: '获取推荐失败' }, 500);
+    console.error('推荐API错误:', error);
+    return c.json({ error: error.message || '获取推荐失败' }, 500);
   }
 });
 
@@ -163,16 +193,57 @@ app.get('/api/history', async (c) => {
     const recommendations = await c.env.RECIPES_KV.get(`recommendations:${date}`);
     
     if (!recommendations) {
-      return c.json([]);
+      return c.json({
+        date,
+        recipes: []
+      });
     }
 
-    return c.json({
-      date,
-      recipes: JSON.parse(recommendations)
-    });
+    try {
+      const parsedRecipes = JSON.parse(recommendations);
+      return c.json({
+        date,
+        recipes: Array.isArray(parsedRecipes) ? parsedRecipes : []
+      });
+    } catch (parseError) {
+      console.error('解析历史数据失败:', parseError);
+      return c.json({
+        date,
+        recipes: []
+      });
+    }
   } catch (error) {
     console.error('获取历史记录失败:', error);
-    return c.json({ error: '获取历史记录失败' }, 500);
+    return c.json({ error: '获取历史记录失败', details: error.message }, 500);
+  }
+});
+
+// 健康检查API
+app.get('/api/health', async (c) => {
+  try {
+    // 测试KV连接
+    const testKey = 'health-check';
+    await c.env.RECIPES_KV.put(testKey, 'ok');
+    const testValue = await c.env.RECIPES_KV.get(testKey);
+    await c.env.RECIPES_KV.delete(testKey);
+
+    return c.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      kv: testValue === 'ok' ? 'connected' : 'error',
+      env: {
+        hasJwtSecret: !!c.env.JWT_SECRET,
+        hasGroqKey: !!c.env.GROQ_API_KEY,
+        hasKv: !!c.env.RECIPES_KV,
+        hasR2: !!c.env.RECIPE_IMAGES
+      }
+    });
+  } catch (error) {
+    return c.json({
+      status: 'error',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    }, 500);
   }
 });
 

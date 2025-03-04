@@ -107,4 +107,15 @@ export async function updateUserPreferences(preferences) {
 // 获取历史记录
 export async function getHistory(date = new Date().toISOString().split('T')[0]) {
   return fetchAPI(`/history?date=${date}`);
+}
+
+// 健康检查函数
+export async function checkHealth() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/health`);
+    return await response.json();
+  } catch (error) {
+    console.error('健康检查失败:', error);
+    throw error;
+  }
 } 
