@@ -5,154 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>每日食谱</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-            background-color: #f5f5f5;
-            color: #333;
-        }
-
-        .navbar {
-            background-color: #fff;
-            padding: 1rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            position: fixed;
-            width: 100%;
-            top: 0;
-            z-index: 100;
-        }
-
-        .nav-content {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .logo {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #ff6b6b;
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 2rem;
-        }
-
-        .nav-links a {
-            text-decoration: none;
-            color: #333;
-            font-weight: 500;
-        }
-
-        .main-content {
-            max-width: 1200px;
-            margin: 80px auto 0;
-            padding: 2rem;
-        }
-
-        .date-header {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-
-        .date-header h1 {
-            font-size: 2rem;
-            color: #2c3e50;
-            margin-bottom: 0.5rem;
-        }
-
-        .recipes-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
-        }
-
-        .recipe-card {
-            background: #fff;
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: transform 0.3s ease;
-        }
-
-        .recipe-card:hover {
-            transform: translateY(-5px);
-        }
-
-        .recipe-image {
-            width: 100%;
-            height: 200px;
-            object-fit: cover;
-        }
-
-        .recipe-content {
-            padding: 1.5rem;
-        }
-
-        .recipe-title {
-            font-size: 1.25rem;
-            margin-bottom: 0.5rem;
-            color: #2c3e50;
-        }
-
-        .recipe-info {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 1rem;
-            color: #666;
-        }
-
-        .recipe-stats {
-            display: flex;
-            gap: 1rem;
-        }
-
-        .stat {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .action-button {
-            background-color: #ff6b6b;
-            color: white;
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-
-        .action-button:hover {
-            background-color: #ff5252;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 2rem;
-            font-size: 1.2rem;
-            color: #666;
-        }
-
-        .error {
-            text-align: center;
-            padding: 2rem;
-            color: #ff5252;
-            background: #ffe5e5;
-            border-radius: 10px;
-            margin: 1rem 0;
-        }
-    </style>
+    <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
     <nav class="navbar">
@@ -161,7 +14,7 @@
                 <i class="fas fa-utensils"></i> 每日食谱
             </div>
             <div class="nav-links">
-                <a href="/"><i class="fas fa-home"></i> 首页</a>
+                <a href="/" class="active"><i class="fas fa-home"></i> 首页</a>
                 <a href="/history.html"><i class="fas fa-calendar-alt"></i> 历史记录</a>
                 <a href="/gallery.html"><i class="fas fa-camera"></i> 我的作品</a>
                 <a href="/profile.html"><i class="fas fa-user"></i> 个人中心</a>
@@ -202,16 +55,16 @@
                 
                 container.innerHTML = recommendations.map(recipe => `
                     <div class="recipe-card">
-                        <img src="${recipe.image || 'https://via.placeholder.com/300x200'}" alt="${recipe.name}" class="recipe-image">
+                        <img src="${recipe.image || 'https://via.placeholder.com/300x200'}" alt="${recipe.菜名}" class="recipe-image">
                         <div class="recipe-content">
-                            <h2 class="recipe-title">${recipe.name}</h2>
-                            <p>${recipe.description}</p>
+                            <h2 class="recipe-title">${recipe.菜名}</h2>
+                            <p>${recipe.简短描述}</p>
                             <div class="recipe-info">
                                 <div class="recipe-stats">
-                                    <span class="stat"><i class="fas fa-clock"></i> ${recipe.time}</span>
-                                    <span class="stat"><i class="fas fa-fire"></i> ${recipe.difficulty}</span>
+                                    <span class="stat"><i class="fas fa-clock"></i> ${recipe.所需时间}</span>
+                                    <span class="stat"><i class="fas fa-fire"></i> ${recipe.难度级别}</span>
                                 </div>
-                                <button class="action-button" onclick="showRecipeDetail('${recipe.id}')">查看详情</button>
+                                <button class="action-button">查看详情</button>
                             </div>
                         </div>
                     </div>
