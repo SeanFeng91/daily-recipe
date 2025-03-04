@@ -6,8 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "prebuild": "if exist dist rmdir /s /q dist",
-    "build": "mkdir dist && xcopy /E /I /Y public dist && xcopy /E /I /Y functions dist\\functions",
+    "clean": "rimraf dist",
+    "build": "npm run clean && mkdir -p dist && cp -r public/* dist/ && cp -r functions dist/functions",
     "deploy": "wrangler deploy"
   },
   "dependencies": {
@@ -16,6 +16,7 @@
   },
   "devDependencies": {
     "wrangler": "^3.30.1",
-    "@cloudflare/workers-types": "^4.20240208.0"
+    "@cloudflare/workers-types": "^4.20240208.0",
+    "rimraf": "^5.0.5"
   }
 } 
