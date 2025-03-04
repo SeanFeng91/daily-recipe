@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler pages dev ./public",
-    "build": "cp -r public/* dist/",
+    "build": "mkdir -p dist && cp -r public/* dist/ && cp -r functions dist/",
     "deploy": "wrangler pages deploy ./public"
   },
   "dependencies": {
