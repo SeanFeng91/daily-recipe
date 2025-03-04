@@ -1,21 +1,54 @@
+// API配置
+const CONFIG = {
+  // 环境配置
+  environments: {
+    development: {
+      apiBase: 'http://localhost:8787',
+      debug: true
+    },
+    production: {
+      apiBase: 'https://daily-recipe.fengyx91.workers.dev',
+      debug: false
+    }
+  },
+  
+  // 当前环境
+  get currentEnv() {
+    return window.location.hostname === 'localhost' ? 'development' : 'production';
+  },
+
+  // 获取当前配置
+  get current() {
+    return this.environments[this.currentEnv];
+  }
+};
+
 // API基础URL
-const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://daily-recipe.fengyx91.workers.dev'  // 替换为你的 Workers 域名
-  : 'http://localhost:8787';
+const API_BASE_URL = CONFIG.current.apiBase;
 
 // 调试信息
-console.log('API基础URL:', API_BASE_URL);
+if (CONFIG.current.debug) {
+  console.log('当前环境:', CONFIG.currentEnv);
+  console.log('API配置:', CONFIG.current);
+  console.log('API基础URL:', API_BASE_URL);
+}
 
 // API请求工具函数
 async function fetchAPI(endpoint, options = {}) {
+  const requestUrl = `${API_BASE_URL}/api${endpoint}`;
+  
+  if (CONFIG.current.debug) {
+    console.log(`请求 API: ${requestUrl}`, { options });
+  }
+
   try {
-    const response = await fetch(`${API_BASE_URL}/api${endpoint}`, {
+    const response = await fetch(requestUrl, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
         ...options.headers
       },
-      credentials: 'include' // 改为 include 以支持跨域 cookie
+      credentials: 'include'
     });
 
     if (!response.ok) {
@@ -23,7 +56,13 @@ async function fetchAPI(endpoint, options = {}) {
       throw new Error(errorData?.message || `请求失败: ${response.status}`);
     }
 
-    return response.json();
+    const data = await response.json();
+    
+    if (CONFIG.current.debug) {
+      console.log(`API响应 (${endpoint}):`, data);
+    }
+
+    return data;
   } catch (error) {
     console.error(`API错误 (${endpoint}):`, error);
     throw new Error(error.message || '网络请求失败，请稍后重试');
