@@ -44,8 +44,8 @@ export async function login() {
   }
 }
 
-// 获取推荐
-async function getRecommendations() {
+// 获取每日推荐
+export async function getDailyRecommendations() {
   try {
     const response = await fetch(`${API_BASE_URL}/api/recommendations`);
     if (!response.ok) {
@@ -80,11 +80,6 @@ export async function uploadImage(image, recipeId) {
   }
 }
 
-// 获取每日推荐
-export async function getDailyRecommendations() {
-  return fetchAPI('/recommendations');
-}
-
 // 获取用户作品集
 export async function getUserGallery(userId) {
   return fetchAPI(`/gallery/${userId}`);
@@ -106,7 +101,4 @@ export async function updateUserPreferences(preferences) {
 // 获取历史记录
 export async function getHistory(date) {
   return fetchAPI(`/history?date=${date}`);
-}
-
-// 导出API函数
-export { getRecommendations, uploadImage }; 
+} 

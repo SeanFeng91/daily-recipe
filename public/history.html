@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>历史记录 - 每日食谱</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-content">
+            <div class="logo">
+                <i class="fas fa-utensils"></i> 每日食谱
+            </div>
+            <div class="nav-links">
+                <a href="/"><i class="fas fa-home"></i> 首页</a>
+                <a href="/history.html" class="active"><i class="fas fa-calendar-alt"></i> 历史记录</a>
+                <a href="/gallery.html"><i class="fas fa-camera"></i> 我的作品</a>
+                <a href="/profile.html"><i class="fas fa-user"></i> 个人中心</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <div class="date-header">
+            <h1>历史记录 <i class="fas fa-history"></i></h1>
+        </div>
+
+        <div id="history-container">
+            <div class="loading">
+                <i class="fas fa-spinner fa-spin"></i> 正在加载历史记录...
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { getHistory } from '/js/api.js';
+
+        async function loadHistory() {
+            const container = document.getElementById('history-container');
+            try {
+                const history = await getHistory();
+                if (history.length === 0) {
+                    container.innerHTML = '<p class="info">暂无历史记录</p>';
+                    return;
+                }
+
+                container.innerHTML = history.map(record => `
+                    <div class="history-card">
+                        <div class="history-date">${new Date(record.date).toLocaleDateString('zh-CN')}</div>
+                        <div class="history-recipes">
+                            ${record.recipes.map(recipe => `
+                                <div class="recipe-item">
+                                    <h3>${recipe.name}</h3>
+                                    <p>${recipe.description}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                container.innerHTML = `
+                    <div class="error">
+                        <i class="fas fa-exclamation-circle"></i> 加载失败：${error.message}
+                        <br>
+                        <small>请检查网络连接或刷新页面重试</small>
+                    </div>
+                `;
+            }
+        }
+
+        // 页面加载时加载历史记录
+        loadHistory();
+    </script>
+</body>
+</html> 

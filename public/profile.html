@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人中心 - 每日食谱</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-content">
+            <div class="logo">
+                <i class="fas fa-utensils"></i> 每日食谱
+            </div>
+            <div class="nav-links">
+                <a href="/"><i class="fas fa-home"></i> 首页</a>
+                <a href="/history.html"><i class="fas fa-calendar-alt"></i> 历史记录</a>
+                <a href="/gallery.html"><i class="fas fa-camera"></i> 我的作品</a>
+                <a href="/profile.html" class="active"><i class="fas fa-user"></i> 个人中心</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <div class="date-header">
+            <h1>个人中心 <i class="fas fa-user"></i></h1>
+        </div>
+
+        <div id="profile-container">
+            <div class="loading">
+                <i class="fas fa-spinner fa-spin"></i> 正在加载个人信息...
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { getUserPreferences, updateUserPreferences } from '/js/api.js';
+
+        async function loadProfile() {
+            const container = document.getElementById('profile-container');
+            try {
+                const preferences = await getUserPreferences();
+                
+                container.innerHTML = `
+                    <div class="profile-card">
+                        <div class="profile-section">
+                            <h2>个人偏好设置</h2>
+                            <form id="preferences-form">
+                                <div class="form-group">
+                                    <label>饮食偏好：</label>
+                                    <select name="dietType">
+                                        <option value="all" ${preferences.dietType === 'all' ? 'selected' : ''}>无特殊要求</option>
+                                        <option value="vegetarian" ${preferences.dietType === 'vegetarian' ? 'selected' : ''}>素食</option>
+                                        <option value="lowCarb" ${preferences.dietType === 'lowCarb' ? 'selected' : ''}>低碳水</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>烹饪难度：</label>
+                                    <select name="difficulty">
+                                        <option value="easy" ${preferences.difficulty === 'easy' ? 'selected' : ''}>简单</option>
+                                        <option value="medium" ${preferences.difficulty === 'medium' ? 'selected' : ''}>中等</option>
+                                        <option value="hard" ${preferences.difficulty === 'hard' ? 'selected' : ''}>困难</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="action-button">保存设置</button>
+                            </form>
+                        </div>
+                    </div>
+                `;
+
+                // 添加表单提交事件
+                document.getElementById('preferences-form').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.target);
+                    const newPreferences = {
+                        dietType: formData.get('dietType'),
+                        difficulty: formData.get('difficulty')
+                    };
+
+                    try {
+                        await updateUserPreferences(newPreferences);
+                        alert('设置已保存');
+                    } catch (error) {
+                        alert('保存失败：' + error.message);
+                    }
+                });
+            } catch (error) {
+                container.innerHTML = `
+                    <div class="error">
+                        <i class="fas fa-exclamation-circle"></i> 加载失败：${error.message}
+                        <br>
+                        <small>请检查网络连接或刷新页面重试</small>
+                    </div>
+                `;
+            }
+        }
+
+        // 页面加载时加载个人信息
+        loadProfile();
+    </script>
+</body>
+</html> 
