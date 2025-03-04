@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "build": "cp -r public/* dist/"
   },
   "dependencies": {
     "hono": "^4.0.8"

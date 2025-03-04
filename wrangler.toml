@@ -1,3 +1,8 @@
+[build]
+command = "npm run build"
+pages_build_output_dir = "dist"
+
+[env.production]
 name = "daily-recipe"
 main = "src/worker.js"
 compatibility_date = "2024-03-21"
