@@ -5,9 +5,9 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
-    "build": "wrangler build"
+    "dev": "wrangler pages dev ./public",
+    "build": "cp -r public/* dist/",
+    "deploy": "wrangler pages deploy ./public"
   },
   "dependencies": {
     "hono": "^4.0.8",

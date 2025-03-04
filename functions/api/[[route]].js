@@ -1,11 +1,10 @@
 import { Hono } from 'hono';
 import { jwt } from 'hono/jwt';
-import { serveStatic } from 'hono/serve-static';
 
 const app = new Hono();
 
 // JWT 中间件
-app.use('/api/*', async (c, next) => {
+app.use('/*', async (c, next) => {
   const jwtMiddleware = jwt({
     secret: c.env.JWT_SECRET,
     cookie: 'auth'
@@ -13,11 +12,8 @@ app.use('/api/*', async (c, next) => {
   return jwtMiddleware(c, next);
 });
 
-// 静态文件服务
-app.get('/*', serveStatic({ root: './public' }));
-
 // AI推荐API
-app.get('/api/recommendations', async (c) => {
+app.get('/recommendations', async (c) => {
   const prompt = `作为一个专业的中餐厨师，请推荐3道今天适合烹饪的菜品。
   对于每道菜，请提供：
   1. 菜名
@@ -57,7 +53,7 @@ app.get('/api/recommendations', async (c) => {
 });
 
 // 图片上传API
-app.post('/api/upload', async (c) => {
+app.post('/upload', async (c) => {
   try {
     const formData = await c.req.formData();
     const image = formData.get('image');
@@ -93,7 +89,7 @@ app.post('/api/upload', async (c) => {
 });
 
 // 获取用户作品API
-app.get('/api/gallery/:userId', async (c) => {
+app.get('/gallery/:userId', async (c) => {
   const userId = c.params.userId;
   const images = await c.env.RECIPES_KV.list({ prefix: `image:${userId}/` });
   
@@ -106,19 +102,17 @@ app.get('/api/gallery/:userId', async (c) => {
 });
 
 // 用户配置API
-app.get('/api/user/preferences', async (c) => {
+app.get('/preferences', async (c) => {
   const userId = c.get('jwtPayload').sub;
   const preferences = await c.env.RECIPES_KV.get(`preferences:${userId}`);
   return c.json(preferences ? JSON.parse(preferences) : {});
 });
 
-app.put('/api/user/preferences', async (c) => {
+app.put('/preferences', async (c) => {
   const userId = c.get('jwtPayload').sub;
   const preferences = await c.req.json();
   await c.env.RECIPES_KV.put(`preferences:${userId}`, JSON.stringify(preferences));
   return c.json({ success: true });
 });
 
-export default {
-  fetch: app.fetch
-}; 
+export const onRequest = app.fetch; 

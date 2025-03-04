@@ -1,5 +1,5 @@
 // API基础URL
-const API_BASE = '';
+const API_BASE = '/api';
 
 // API请求工具函数
 async function fetchAPI(endpoint, options = {}) {
@@ -20,7 +20,7 @@ async function fetchAPI(endpoint, options = {}) {
 
 // 获取每日推荐
 export async function getDailyRecommendations() {
-  return fetchAPI('/api/recommendations');
+  return fetchAPI('/recommendations');
 }
 
 // 上传作品图片
@@ -29,7 +29,7 @@ export async function uploadImage(image, recipeId) {
   formData.append('image', image);
   formData.append('recipeId', recipeId);
 
-  return fetchAPI('/api/upload', {
+  return fetchAPI('/upload', {
     method: 'POST',
     body: formData,
     headers: {} // 让浏览器自动设置Content-Type
@@ -38,17 +38,17 @@ export async function uploadImage(image, recipeId) {
 
 // 获取用户作品集
 export async function getUserGallery(userId) {
-  return fetchAPI(`/api/gallery/${userId}`);
+  return fetchAPI(`/gallery/${userId}`);
 }
 
 // 获取用户偏好设置
 export async function getUserPreferences() {
-  return fetchAPI('/api/user/preferences');
+  return fetchAPI('/preferences');
 }
 
 // 更新用户偏好设置
 export async function updateUserPreferences(preferences) {
-  return fetchAPI('/api/user/preferences', {
+  return fetchAPI('/preferences', {
     method: 'PUT',
     body: JSON.stringify(preferences)
   });
@@ -56,5 +56,5 @@ export async function updateUserPreferences(preferences) {
 
 // 获取历史记录
 export async function getHistory(date) {
-  return fetchAPI(`/api/history?date=${date}`);
+  return fetchAPI(`/history?date=${date}`);
 } 
