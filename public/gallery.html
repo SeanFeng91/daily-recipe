@@ -37,10 +37,17 @@
     <script type="module">
         import { getUserGallery } from '/js/api.js';
 
+        // 从 localStorage 或 cookie 中获取用户ID
+        function getCurrentUserId() {
+            // 这里先使用演示用户ID，实际应该从登录状态中获取
+            return 'demo';
+        }
+
         async function loadGallery() {
             const container = document.getElementById('gallery-container');
             try {
-                const gallery = await getUserGallery();
+                const userId = getCurrentUserId();
+                const gallery = await getUserGallery(userId);
                 if (gallery.length === 0) {
                     container.innerHTML = '<p class="info">暂无作品</p>';
                     return;

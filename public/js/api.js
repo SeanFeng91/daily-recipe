@@ -133,6 +133,9 @@ export async function uploadImage(image, recipeId) {
 
 // 获取用户作品集
 export async function getUserGallery(userId) {
+  if (!userId) {
+    throw new Error('缺少必要参数：userId');
+  }
   return fetchAPI(`/gallery/${userId}`);
 }
 
