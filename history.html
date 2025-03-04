@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>历史记录 - 每日食谱</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .navbar {
+            background-color: #fff;
+            padding: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #ff6b6b;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .main-content {
+            max-width: 1200px;
+            margin: 80px auto 0;
+            padding: 2rem;
+        }
+
+        .calendar-section {
+            background: #fff;
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .calendar-title {
+            font-size: 1.5rem;
+            color: #2c3e50;
+        }
+
+        .calendar-nav {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .calendar-nav button {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1rem;
+        }
+
+        .calendar-weekday {
+            text-align: center;
+            font-weight: bold;
+            color: #666;
+            padding: 0.5rem;
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .calendar-day:hover {
+            background: #e9ecef;
+        }
+
+        .calendar-day.has-recipe {
+            background: #ffe3e3;
+            position: relative;
+        }
+
+        .calendar-day.has-recipe::after {
+            content: '';
+            position: absolute;
+            bottom: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 4px;
+            background: #ff6b6b;
+            border-radius: 50%;
+        }
+
+        .calendar-day.today {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .history-list {
+            background: #fff;
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .history-title {
+            font-size: 1.5rem;
+            color: #2c3e50;
+        }
+
+        .history-filter {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .filter-button {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 5px;
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .filter-button.active {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .history-items {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .history-item {
+            display: flex;
+            gap: 1rem;
+            padding: 1rem;
+            border-radius: 10px;
+            background: #f8f9fa;
+            transition: all 0.3s ease;
+        }
+
+        .history-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .history-image {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 5px;
+        }
+
+        .history-content {
+            flex: 1;
+        }
+
+        .history-date {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .history-title {
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .history-tags {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .tag {
+            padding: 0.2rem 0.5rem;
+            background: #e9ecef;
+            border-radius: 3px;
+            font-size: 0.8rem;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-content">
+            <div class="logo">
+                <i class="fas fa-utensils"></i> 每日食谱
+            </div>
+            <div class="nav-links">
+                <a href="index.html"><i class="fas fa-home"></i> 首页</a>
+                <a href="#"><i class="fas fa-calendar-alt"></i> 历史记录</a>
+                <a href="#"><i class="fas fa-camera"></i> 我的作品</a>
+                <a href="#"><i class="fas fa-user"></i> 个人中心</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <section class="calendar-section">
+            <div class="calendar-header">
+                <h2 class="calendar-title">2024年3月</h2>
+                <div class="calendar-nav">
+                    <button><i class="fas fa-chevron-left"></i></button>
+                    <button><i class="fas fa-chevron-right"></i></button>
+                </div>
+            </div>
+            <div class="calendar-grid">
+                <div class="calendar-weekday">日</div>
+                <div class="calendar-weekday">一</div>
+                <div class="calendar-weekday">二</div>
+                <div class="calendar-weekday">三</div>
+                <div class="calendar-weekday">四</div>
+                <div class="calendar-weekday">五</div>
+                <div class="calendar-weekday">六</div>
+                
+                <!-- 日历格子 -->
+                <div class="calendar-day">1</div>
+                <div class="calendar-day has-recipe">2</div>
+                <div class="calendar-day">3</div>
+                <div class="calendar-day has-recipe">4</div>
+                <div class="calendar-day">5</div>
+                <div class="calendar-day has-recipe">6</div>
+                <div class="calendar-day">7</div>
+                <!-- 更多日期... -->
+            </div>
+        </section>
+
+        <section class="history-list">
+            <div class="history-header">
+                <h2 class="history-title">历史记录</h2>
+                <div class="history-filter">
+                    <button class="filter-button active">全部</button>
+                    <button class="filter-button">已完成</button>
+                    <button class="filter-button">收藏</button>
+                </div>
+            </div>
+
+            <div class="history-items">
+                <div class="history-item">
+                    <img src="https://images.unsplash.com/photo-1547592180-85f173990554" alt="红烧排骨" class="history-image">
+                    <div class="history-content">
+                        <div class="history-date">2024年3月21日</div>
+                        <h3 class="history-title">红烧排骨</h3>
+                        <div class="history-tags">
+                            <span class="tag">已完成</span>
+                            <span class="tag">收藏</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="history-item">
+                    <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c" alt="时蔬沙拉" class="history-image">
+                    <div class="history-content">
+                        <div class="history-date">2024年3月20日</div>
+                        <h3 class="history-title">时蔬沙拉</h3>
+                        <div class="history-tags">
+                            <span class="tag">已完成</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 更多历史记录项... -->
+            </div>
+        </section>
+    </main>
+</body>
+</html> 

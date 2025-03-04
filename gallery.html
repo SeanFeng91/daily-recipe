@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的作品 - 每日食谱</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .navbar {
+            background-color: #fff;
+            padding: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #ff6b6b;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .main-content {
+            max-width: 1200px;
+            margin: 80px auto 0;
+            padding: 2rem;
+        }
+
+        .gallery-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .gallery-title {
+            font-size: 2rem;
+            color: #2c3e50;
+        }
+
+        .gallery-filter {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .filter-button {
+            padding: 0.5rem 1.5rem;
+            border: none;
+            border-radius: 5px;
+            background: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .filter-button.active {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 2rem;
+        }
+
+        .gallery-item {
+            background: #fff;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .gallery-item:hover {
+            transform: translateY(-5px);
+        }
+
+        .gallery-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+
+        .gallery-content {
+            padding: 1.5rem;
+        }
+
+        .gallery-date {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .gallery-recipe-title {
+            font-size: 1.2rem;
+            color: #2c3e50;
+            margin-bottom: 1rem;
+        }
+
+        .gallery-stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #666;
+        }
+
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .upload-section {
+            background: #fff;
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .upload-area {
+            border: 2px dashed #dee2e6;
+            border-radius: 10px;
+            padding: 2rem;
+            margin: 1rem 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-area:hover {
+            border-color: #ff6b6b;
+            background: #fff5f5;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: #ff6b6b;
+            margin-bottom: 1rem;
+        }
+
+        .upload-text {
+            color: #666;
+            margin-bottom: 1rem;
+        }
+
+        .upload-button {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 0.8rem 2rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .upload-button:hover {
+            background: #ff5252;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 2rem;
+        }
+
+        .page-button {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            border-radius: 5px;
+            background: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .page-button.active {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .page-button:hover:not(.active) {
+            background: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-content">
+            <div class="logo">
+                <i class="fas fa-utensils"></i> 每日食谱
+            </div>
+            <div class="nav-links">
+                <a href="index.html"><i class="fas fa-home"></i> 首页</a>
+                <a href="history.html"><i class="fas fa-calendar-alt"></i> 历史记录</a>
+                <a href="gallery.html" class="active"><i class="fas fa-camera"></i> 我的作品</a>
+                <a href="profile.html"><i class="fas fa-user"></i> 个人中心</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <section class="upload-section">
+            <h2>上传新作品</h2>
+            <div class="upload-area">
+                <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                <p class="upload-text">点击或拖拽图片到此处上传</p>
+                <button class="upload-button">选择图片</button>
+            </div>
+        </section>
+
+        <div class="gallery-header">
+            <h1 class="gallery-title">我的作品集</h1>
+            <div class="gallery-filter">
+                <button class="filter-button active">全部</button>
+                <button class="filter-button">最近</button>
+                <button class="filter-button">最受欢迎</button>
+            </div>
+        </div>
+
+        <div class="gallery-grid">
+            <!-- 作品1 -->
+            <div class="gallery-item">
+                <img src="https://images.unsplash.com/photo-1547592180-85f173990554" alt="红烧排骨" class="gallery-image">
+                <div class="gallery-content">
+                    <div class="gallery-date">2024年3月21日</div>
+                    <h3 class="gallery-recipe-title">红烧排骨</h3>
+                    <div class="gallery-stats">
+                        <span class="stat">
+                            <i class="fas fa-heart"></i>
+                            32
+                        </span>
+                        <span class="stat">
+                            <i class="fas fa-comment"></i>
+                            8
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 作品2 -->
+            <div class="gallery-item">
+                <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c" alt="时蔬沙拉" class="gallery-image">
+                <div class="gallery-content">
+                    <div class="gallery-date">2024年3月20日</div>
+                    <h3 class="gallery-recipe-title">时蔬沙拉</h3>
+                    <div class="gallery-stats">
+                        <span class="stat">
+                            <i class="fas fa-heart"></i>
+                            24
+                        </span>
+                        <span class="stat">
+                            <i class="fas fa-comment"></i>
+                            5
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 作品3 -->
+            <div class="gallery-item">
+                <img src="https://images.unsplash.com/photo-1512058556646-c4da40fba323" alt="清蒸鲈鱼" class="gallery-image">
+                <div class="gallery-content">
+                    <div class="gallery-date">2024年3月19日</div>
+                    <h3 class="gallery-recipe-title">清蒸鲈鱼</h3>
+                    <div class="gallery-stats">
+                        <span class="stat">
+                            <i class="fas fa-heart"></i>
+                            45
+                        </span>
+                        <span class="stat">
+                            <i class="fas fa-comment"></i>
+                            12
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="pagination">
+            <button class="page-button"><i class="fas fa-chevron-left"></i></button>
+            <button class="page-button active">1</button>
+            <button class="page-button">2</button>
+            <button class="page-button">3</button>
+            <button class="page-button"><i class="fas fa-chevron-right"></i></button>
+        </div>
+    </main>
+</body>
+</html> 

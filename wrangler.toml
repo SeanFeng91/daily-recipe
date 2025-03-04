@@ -1,0 +1,21 @@
+name = "daily-recipe"
+main = "src/worker.js"
+compatibility_date = "2024-03-21"
+
+# KV 命名空间
+kv_namespaces = [
+  { binding = "RECIPES_KV", id = "your-kv-id" }
+]
+
+# R2 存储桶
+[[r2_buckets]]
+binding = "RECIPE_IMAGES"
+bucket_name = "recipe-images"
+
+# 环境变量
+[vars]
+ENVIRONMENT = "production"
+
+# 需要在Cloudflare Dashboard中设置的加密环境变量
+# - GROQ_API_KEY: Groq API密钥
+# - JWT_SECRET: JWT签名密钥 
