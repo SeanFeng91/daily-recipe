@@ -1,5 +1,8 @@
 // API基础URL
-const API_BASE_URL = '';
+const API_BASE_URL = window.location.origin;
+
+// 调试信息
+console.log('API基础URL:', API_BASE_URL);
 
 // API请求工具函数
 async function fetchAPI(endpoint, options = {}) {

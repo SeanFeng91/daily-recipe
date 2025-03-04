@@ -38,28 +38,37 @@
         import { getHistory } from '/js/api.js';
 
         async function loadHistory() {
+            console.log('开始加载历史记录...');
             const container = document.getElementById('history-container');
             try {
+                console.log('调用 getHistory API...');
                 const history = await getHistory();
-                if (history.length === 0) {
+                console.log('获取到历史数据:', history);
+
+                if (!history.recipes || history.recipes.length === 0) {
                     container.innerHTML = '<p class="info">暂无历史记录</p>';
                     return;
                 }
 
-                container.innerHTML = history.map(record => `
+                container.innerHTML = `
                     <div class="history-card">
-                        <div class="history-date">${new Date(record.date).toLocaleDateString('zh-CN')}</div>
+                        <div class="history-date">${new Date(history.date).toLocaleDateString('zh-CN')}</div>
                         <div class="history-recipes">
-                            ${record.recipes.map(recipe => `
+                            ${history.recipes.map(recipe => `
                                 <div class="recipe-item">
-                                    <h3>${recipe.name}</h3>
-                                    <p>${recipe.description}</p>
+                                    <h3>${recipe.菜名}</h3>
+                                    <p>${recipe.简短描述}</p>
+                                    <div class="recipe-details">
+                                        <span><i class="fas fa-clock"></i> ${recipe.所需时间}</span>
+                                        <span><i class="fas fa-signal"></i> ${recipe.难度级别}</span>
+                                    </div>
                                 </div>
                             `).join('')}
                         </div>
                     </div>
-                `).join('');
+                `;
             } catch (error) {
+                console.error('加载历史记录失败:', error);
                 container.innerHTML = `
                     <div class="error">
                         <i class="fas fa-exclamation-circle"></i> 加载失败：${error.message}
@@ -71,6 +80,7 @@
         }
 
         // 页面加载时加载历史记录
+        console.log('页面加载完成，准备加载历史记录...');
         loadHistory();
     </script>
 </body>
