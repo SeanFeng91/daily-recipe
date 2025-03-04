@@ -3,7 +3,7 @@ const API_BASE_URL = '';
 
 // API请求工具函数
 async function fetchAPI(endpoint, options = {}) {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const response = await fetch(`${API_BASE_URL}/api${endpoint}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -19,7 +19,7 @@ async function fetchAPI(endpoint, options = {}) {
 }
 
 // 登录函数
-async function login() {
+export async function login() {
   try {
     const response = await fetch(`${API_BASE_URL}/api/login`, {
       method: 'POST',
@@ -59,7 +59,7 @@ async function getRecommendations() {
 }
 
 // 上传图片
-async function uploadImage(image, recipeId) {
+export async function uploadImage(image, recipeId) {
   try {
     const formData = new FormData();
     formData.append('image', image);
@@ -92,12 +92,12 @@ export async function getUserGallery(userId) {
 
 // 获取用户偏好设置
 export async function getUserPreferences() {
-  return fetchAPI('/preferences');
+  return fetchAPI('/user/preferences');
 }
 
 // 更新用户偏好设置
 export async function updateUserPreferences(preferences) {
-  return fetchAPI('/preferences', {
+  return fetchAPI('/user/preferences', {
     method: 'PUT',
     body: JSON.stringify(preferences)
   });
@@ -109,4 +109,4 @@ export async function getHistory(date) {
 }
 
 // 导出API函数
-export { login, getRecommendations, uploadImage }; 
+export { getRecommendations, uploadImage }; 

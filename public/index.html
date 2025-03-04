@@ -219,7 +219,9 @@
             } catch (error) {
                 container.innerHTML = `
                     <div class="error">
-                        <i class="fas fa-exclamation-circle"></i> 加载失败，请稍后重试
+                        <i class="fas fa-exclamation-circle"></i> 加载失败：${error.message}
+                        <br>
+                        <small>请检查网络连接或刷新页面重试</small>
                     </div>
                 `;
             }
