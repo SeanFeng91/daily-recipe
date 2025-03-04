@@ -1,24 +1,16 @@
-[build]
-command = "npm run build"
-pages_build_output_dir = "dist"
-
-[site]
-bucket = "./public"
-
-[env.production]
 name = "daily-recipe"
-workers_dev = true
+main = "src/worker.js"
+compatibility_date = "2024-03-21"
 
 # KV 绑定
 [[kv_namespaces]]
 binding = "RECIPES_KV"
 id = "d64e1a0e5c04420f96561e2c91df2893"
 
-
 # R2 存储桶
 [[r2_buckets]]
 binding = "RECIPE_IMAGES"
-bucket_name = "recipe-images"
+bucket_name = "recipe"
 
 # 环境变量
 [vars]

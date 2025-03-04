@@ -1,16 +1,6 @@
 import { Hono } from 'hono';
-import { jwt } from 'hono/jwt';
 
 const app = new Hono();
-
-// JWT 中间件
-app.use('/*', async (c, next) => {
-  const jwtMiddleware = jwt({
-    secret: c.env.JWT_SECRET,
-    cookie: 'auth'
-  });
-  return jwtMiddleware(c, next);
-});
 
 // AI推荐API
 app.get('/recommendations', async (c) => {
@@ -57,14 +47,13 @@ app.post('/upload', async (c) => {
   try {
     const formData = await c.req.formData();
     const image = formData.get('image');
-    const userId = c.get('jwtPayload').sub;
 
     if (!image) {
       return c.json({ error: '没有上传图片' }, 400);
     }
 
     // 生成唯一文件名
-    const filename = `${userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
+    const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
     
     // 上传到R2
     await c.env.RECIPE_IMAGES.put(filename, image.stream(), {
@@ -75,7 +64,6 @@ app.post('/upload', async (c) => {
 
     // 保存记录到KV
     const imageRecord = {
-      userId,
       filename,
       recipeId: formData.get('recipeId'),
       timestamp: Date.now()
@@ -89,16 +77,19 @@ app.post('/upload', async (c) => {
 });
 
 // 获取用户作品API
-app.get('/gallery/:userId', async (c) => {
-  const userId = c.params.userId;
-  const images = await c.env.RECIPES_KV.list({ prefix: `image:${userId}/` });
-  
-  const gallery = await Promise.all(images.keys.map(async (key) => {
-    const record = await c.env.RECIPES_KV.get(key.name);
-    return JSON.parse(record);
-  }));
+app.get('/gallery', async (c) => {
+  try {
+    const images = await c.env.RECIPES_KV.list({ prefix: `image:` });
+    
+    const gallery = await Promise.all(images.keys.map(async (key) => {
+      const record = await c.env.RECIPES_KV.get(key.name);
+      return JSON.parse(record);
+    }));
 
-  return c.json(gallery);
+    return c.json(gallery);
+  } catch (error) {
+    return c.json({ error: '获取作品失败' }, 500);
+  }
 });
 
 // 用户配置API

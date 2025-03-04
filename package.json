@@ -5,9 +5,10 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "wrangler pages dev ./public",
-    "build": "mkdir -p dist && cp -r public/* dist/ && cp -r functions dist/",
-    "deploy": "wrangler pages deploy ./public"
+    "dev": "wrangler dev",
+    "prebuild": "if exist dist rmdir /s /q dist",
+    "build": "mkdir dist && xcopy /E /I /Y public dist && xcopy /E /I /Y functions dist\\functions",
+    "deploy": "wrangler deploy"
   },
   "dependencies": {
     "hono": "^4.0.8",
