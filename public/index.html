@@ -183,7 +183,7 @@
     </main>
 
     <script type="module">
-        import { getDailyRecommendations } from '/js/api.js';
+        import { getDailyRecommendations, login } from '/js/api.js';
 
         // 设置当前日期
         const dateElement = document.getElementById('current-date');
@@ -225,8 +225,29 @@
             }
         }
 
-        // 页面加载完成后执行
-        document.addEventListener('DOMContentLoaded', loadRecommendations);
+        // 检查是否已登录（通过尝试获取推荐来判断）
+        async function checkLoginStatus() {
+            try {
+                await getDailyRecommendations();
+                document.getElementById('loginBtn').style.display = 'none';
+                loadRecommendations();
+            } catch (error) {
+                document.getElementById('loginBtn').style.display = 'block';
+                document.getElementById('recipes-container').innerHTML = '<p class="error">请先登录</p>';
+            }
+        }
+
+        // 登录按钮点击事件
+        document.getElementById('loginBtn').addEventListener('click', async () => {
+            if (await login()) {
+                checkLoginStatus();
+            } else {
+                alert('登录失败，请重试');
+            }
+        });
+
+        // 页面加载时检查登录状态
+        checkLoginStatus();
     </script>
 </body>
 </html> 

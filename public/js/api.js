@@ -1,9 +1,9 @@
 // API基础URL
-const API_BASE = '/api';
+const API_BASE_URL = '';
 
 // API请求工具函数
 async function fetchAPI(endpoint, options = {}) {
-  const response = await fetch(`${API_BASE}${endpoint}`, {
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -18,22 +18,71 @@ async function fetchAPI(endpoint, options = {}) {
   return response.json();
 }
 
+// 登录函数
+async function login() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: 'demo',  // 示例用户
+        password: 'demo'   // 示例密码
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error('登录失败');
+    }
+    
+    // 登录成功后，JWT token会自动保存在cookie中
+    return true;
+  } catch (error) {
+    console.error('登录错误:', error);
+    return false;
+  }
+}
+
+// 获取推荐
+async function getRecommendations() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/recommendations`);
+    if (!response.ok) {
+      throw new Error('获取推荐失败');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('获取推荐错误:', error);
+    throw error;
+  }
+}
+
+// 上传图片
+async function uploadImage(image, recipeId) {
+  try {
+    const formData = new FormData();
+    formData.append('image', image);
+    formData.append('recipeId', recipeId);
+
+    const response = await fetch(`${API_BASE_URL}/api/upload`, {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!response.ok) {
+      throw new Error('上传失败');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('上传错误:', error);
+    throw error;
+  }
+}
+
 // 获取每日推荐
 export async function getDailyRecommendations() {
   return fetchAPI('/recommendations');
-}
-
-// 上传作品图片
-export async function uploadImage(image, recipeId) {
-  const formData = new FormData();
-  formData.append('image', image);
-  formData.append('recipeId', recipeId);
-
-  return fetchAPI('/upload', {
-    method: 'POST',
-    body: formData,
-    headers: {} // 让浏览器自动设置Content-Type
-  });
 }
 
 // 获取用户作品集
@@ -57,4 +106,7 @@ export async function updateUserPreferences(preferences) {
 // 获取历史记录
 export async function getHistory(date) {
   return fetchAPI(`/history?date=${date}`);
-} 
+}
+
+// 导出API函数
+export { login, getRecommendations, uploadImage }; 

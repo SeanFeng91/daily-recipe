@@ -4,8 +4,39 @@ import { serveStatic } from 'hono/serve-static';
 
 const app = new Hono();
 
+// 登录API
+app.post('/api/login', async (c) => {
+  const { username, password } = await c.req.json();
+  
+  // 这里简单演示，实际应该查询数据库验证用户
+  if (username === 'demo' && password === 'demo') {
+    // 创建JWT token
+    const token = await jwt.sign({
+      sub: username,
+      exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24) // 24小时过期
+    }, c.env.JWT_SECRET);
+
+    // 设置cookie
+    c.cookie('auth', token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'Strict',
+      maxAge: 60 * 60 * 24 // 24小时
+    });
+
+    return c.json({ success: true });
+  }
+
+  return c.json({ error: '用户名或密码错误' }, 401);
+});
+
 // JWT 中间件
 app.use('/api/*', async (c, next) => {
+  // 排除登录接口
+  if (c.req.path === '/api/login') {
+    return next();
+  }
+
   const jwtMiddleware = jwt({
     secret: c.env.JWT_SECRET,
     cookie: 'auth'
