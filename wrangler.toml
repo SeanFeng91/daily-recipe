@@ -16,9 +16,6 @@ bucket_name = "recipe"
 [vars]
 ENVIRONMENT = "production"
 
-[site]
-bucket = "./public"
-
 # 需要在Cloudflare Dashboard中设置的加密环境变量
 # - GROQ_API_KEY: Groq API密钥
 # - JWT_SECRET: JWT签名密钥 
