@@ -151,6 +151,31 @@ app.put('/api/user/preferences', async (c) => {
   return c.json({ success: true });
 });
 
+// 获取历史记录API
+app.get('/api/history', async (c) => {
+  try {
+    const date = c.req.query('date');
+    if (!date) {
+      return c.json({ error: '日期参数必填' }, 400);
+    }
+
+    // 从KV中获取指定日期的推荐
+    const recommendations = await c.env.RECIPES_KV.get(`recommendations:${date}`);
+    
+    if (!recommendations) {
+      return c.json([]);
+    }
+
+    return c.json({
+      date,
+      recipes: JSON.parse(recommendations)
+    });
+  } catch (error) {
+    console.error('获取历史记录失败:', error);
+    return c.json({ error: '获取历史记录失败' }, 500);
+  }
+});
+
 export default {
   fetch: app.fetch
 }; 

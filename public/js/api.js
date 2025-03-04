@@ -3,19 +3,25 @@ const API_BASE_URL = '';
 
 // API请求工具函数
 async function fetchAPI(endpoint, options = {}) {
-  const response = await fetch(`${API_BASE_URL}/api${endpoint}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers
+  try {
+    const response = await fetch(`${API_BASE_URL}/api${endpoint}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      throw new Error(errorData?.message || `请求失败: ${response.status}`);
     }
-  });
 
-  if (!response.ok) {
-    throw new Error(`API请求失败: ${response.statusText}`);
+    return response.json();
+  } catch (error) {
+    console.error(`API错误 (${endpoint}):`, error);
+    throw new Error(error.message || '网络请求失败，请稍后重试');
   }
-
-  return response.json();
 }
 
 // 登录函数
@@ -99,6 +105,6 @@ export async function updateUserPreferences(preferences) {
 }
 
 // 获取历史记录
-export async function getHistory(date) {
+export async function getHistory(date = new Date().toISOString().split('T')[0]) {
   return fetchAPI(`/history?date=${date}`);
 } 
