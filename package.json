@@ -6,17 +6,14 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "clean": "rimraf dist",
-    "build": "npm run clean && mkdir -p dist && cp -r public/* dist/ && cp -r functions dist/functions",
+    "build": "mkdir -p dist && cp -r public/* dist/ && cp -r functions dist/functions",
     "deploy": "wrangler deploy"
   },
   "dependencies": {
-    "hono": "^4.0.8",
-    "@hono/node-server": "^1.8.2"
+    "hono": "^4.0.8"
   },
   "devDependencies": {
     "wrangler": "^3.30.1",
-    "@cloudflare/workers-types": "^4.20240208.0",
-    "rimraf": "^5.0.5"
+    "@cloudflare/workers-types": "^4.20240208.0"
   }
 } 

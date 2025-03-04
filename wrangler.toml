@@ -1,6 +1,12 @@
+[build]
+command = "npm run build"
+pages_build_output_dir = "dist"
+
+[site]
+bucket = "./public"
+
+[env.production]
 name = "daily-recipe"
-main = "src/worker.js"
-compatibility_date = "2024-03-21"
 
 # KV 绑定
 [[kv_namespaces]]
