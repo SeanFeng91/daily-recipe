@@ -48,11 +48,12 @@
             <h4>API状态</h4>
             <div id="api-status-content">正在检查...</div>
             <button id="check-api-status-btn">检查API状态</button>
+            <button id="force-refresh-btn" style="margin-left: 10px; background-color: #ffcc00;">强制刷新推荐</button>
         </div>
     </main>
 
     <script type="module">
-        import { getDailyRecommendations, login, diagnoseAPI } from '/js/api.js';
+        import { getDailyRecommendations, login, diagnoseAPI, CONFIG } from '/js/api.js';
 
         // 设置当前日期
         const dateElement = document.getElementById('current-date');
@@ -90,7 +91,7 @@
         });
 
         // 加载推荐菜品
-        async function loadRecommendations() {
+        async function loadRecommendations(forceRefresh = false) {
             const loadingIndicator = document.getElementById('loading-indicator');
             const recipesContainer = document.getElementById('recipes-container');
             
@@ -100,7 +101,21 @@
             try {
                 // 添加一个随机参数避免缓存
                 console.log('正在获取每日推荐...');
-                const recommendations = await getDailyRecommendations();
+                
+                // 如果强制刷新，先清除缓存
+                if (forceRefresh) {
+                    console.log('强制刷新，尝试清除缓存...');
+                    try {
+                        const clearCacheResponse = await fetch(`${CONFIG.current.apiBase}/api/clear-cache`);
+                        console.log('清除缓存响应:', await clearCacheResponse.json());
+                    } catch (cacheError) {
+                        console.error('清除缓存失败:', cacheError);
+                    }
+                }
+                
+                // 带上时间戳和强制刷新参数
+                const timestamp = Date.now();
+                const recommendations = await getDailyRecommendations(forceRefresh);
                 console.log('获取到的推荐:', recommendations);
                 
                 // 检查推荐是否为数组
@@ -137,7 +152,7 @@
                 `;
                 
                 document.getElementById('retry-btn')?.addEventListener('click', () => {
-                    loadRecommendations();
+                    loadRecommendations(true);
                 });
             } finally {
                 // 隐藏加载指示器
@@ -205,7 +220,7 @@
             try {
                 const startTime = Date.now();
                 // 使用时间戳参数避免缓存
-                const response = await fetch(`${CONFIG.current.apiBase}/api/recommendations?t=${Date.now()}`);
+                const response = await fetch(`${CONFIG.current.apiBase}/api/recommendations?t=${Date.now()}&nocache=true`);
                 const recommendations = await response.json();
                 const endTime = Date.now();
                 
@@ -216,7 +231,7 @@
                     <p><button id="refresh-recommendations-btn">刷新页面推荐</button></p>
                 `;
                 
-                document.getElementById('refresh-recommendations-btn')?.addEventListener('click', loadRecommendations);
+                document.getElementById('refresh-recommendations-btn')?.addEventListener('click', () => loadRecommendations(true));
             } catch (error) {
                 statusContent.innerHTML += `<p>推荐API测试失败: ${error.message}</p>`;
             }
@@ -224,13 +239,16 @@
 
         // 绑定API状态检查按钮
         document.getElementById('check-api-status-btn')?.addEventListener('click', checkAPIStatus);
+        
+        // 绑定强制刷新按钮
+        document.getElementById('force-refresh-btn')?.addEventListener('click', () => loadRecommendations(true));
 
-        // 页面加载时执行检查登录并加载推荐
+        // 页面加载时执行加载推荐
         window.addEventListener('DOMContentLoaded', () => {
             loadRecommendations();
         });
 
-        // 将CONFIG暴露到全局，以便在checkAPIStatus中使用
+        // 将CONFIG暴露到全局，以便在其他地方使用
         window.CONFIG = CONFIG;
     </script>
 </body>

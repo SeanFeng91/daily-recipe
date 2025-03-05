@@ -1,5 +1,5 @@
 // API配置
-const CONFIG = {
+export const CONFIG = {
   // 环境配置
   environments: {
     development: {
@@ -46,64 +46,65 @@ async function fetchAPI(endpoint, options = {}) {
       ...options,
       headers: {
         'Content-Type': 'application/json',
-        ...options.headers
-      },
-      credentials: 'include'
+        ...(options.headers || {})
+      }
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      throw new Error(errorData?.message || `请求失败: ${response.status}`);
+      throw new Error(`请求失败: ${response.status}`);
     }
 
-    const data = await response.json();
-    
-    if (CONFIG.current.debug) {
-      console.log(`API响应 (${endpoint}):`, data);
-    }
-
-    return data;
+    return await response.json();
   } catch (error) {
     console.error(`API错误 (${endpoint}):`, error);
-    throw new Error(error.message || '网络请求失败，请稍后重试');
+    throw error;
   }
 }
 
-// 登录函数
+// 登录
 export async function login() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/login`, {
+    // 模拟登录请求
+    const response = await fetchAPI('/login', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({
-        username: 'demo',  // 示例用户
-        password: 'demo'   // 示例密码
+        username: 'demo',
+        password: 'demo'
       })
     });
     
-    if (!response.ok) {
-      throw new Error('登录失败');
+    if (response.token) {
+      // 在实际应用中，应该将token存储在cookie或localStorage中
+      document.cookie = `auth=${response.token}; path=/; max-age=86400`;
+      return true;
     }
     
-    // 登录成功后，JWT token会自动保存在cookie中
-    return true;
+    return false;
   } catch (error) {
-    console.error('登录错误:', error);
+    console.error('登录失败:', error);
     return false;
   }
 }
 
 // 获取每日推荐
-export async function getDailyRecommendations() {
-  console.log('获取每日推荐');
+export async function getDailyRecommendations(forceRefresh = false) {
+  console.log('获取每日推荐，强制刷新:', forceRefresh);
   
   try {
-    // 添加时间戳避免缓存
-    const timestamp = new Date().getTime();
-    const response = await fetchAPI(`/recommendations?_=${timestamp}`);
-    console.log('每日推荐响应:', response);
+    // 添加时间戳和强制刷新参数
+    const queryParams = new URLSearchParams();
+    queryParams.append('_t', Date.now());
+    
+    if (forceRefresh) {
+      queryParams.append('nocache', 'true');
+      console.log('添加nocache参数以强制刷新');
+    }
+    
+    const endpoint = `/recommendations?${queryParams.toString()}`;
+    console.log('请求推荐API:', endpoint);
+    
+    const response = await fetchAPI(endpoint);
+    console.log('推荐API响应:', response);
     return response;
   } catch (error) {
     console.error('获取每日推荐失败:', error);

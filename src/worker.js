@@ -128,6 +128,19 @@ app.use('/api/*', async (c, next) => {
   }
 });
 
+// 添加一个清除缓存的端点
+app.get('/api/clear-cache', async (c) => {
+  try {
+    const date = new Date().toISOString().split('T')[0];
+    console.log(`清除缓存: recommendations:${date}`);
+    await c.env.RECIPES_KV.delete(`recommendations:${date}`);
+    return c.json({ success: true, message: '缓存已清除', date });
+  } catch (error) {
+    console.error('清除缓存失败:', error);
+    return c.json({ error: '清除缓存失败', message: error.message }, 500);
+  }
+});
+
 // AI推荐API
 app.get('/api/recommendations', async (c) => {
   try {
@@ -147,7 +160,6 @@ app.get('/api/recommendations', async (c) => {
       console.log('禁用缓存，直接调用API');
     }
 
-    console.log(`未找到缓存数据，检查GROQ API密钥`);
     // 检查是否配置了GROQ API密钥
     if (!c.env.GROQ_API_KEY) {
       console.warn('GROQ_API_KEY未配置，使用默认数据');
@@ -182,7 +194,7 @@ app.get('/api/recommendations', async (c) => {
       
       return c.json(defaultRecommendations);
     }
-
+    
     console.log(`使用GROQ API获取推荐 (密钥: ${c.env.GROQ_API_KEY.substring(0, 4)}...)`);
     
     // 如果有GROQ API密钥，则请求AI推荐
@@ -241,7 +253,9 @@ app.get('/api/recommendations', async (c) => {
       let recommendations;
       try {
         // 尝试解析JSON
-        recommendations = JSON.parse(data.choices[0].message.content);
+        const content = data.choices[0].message.content;
+        console.log('解析JSON:', content);
+        recommendations = JSON.parse(content);
         
         // 验证数据结构
         if (!Array.isArray(recommendations)) {
@@ -604,17 +618,6 @@ app.get('/api/health/detailed', async (c) => {
       error: error.message,
       timestamp: new Date().toISOString()
     }, 500);
-  }
-});
-
-// 添加一个清除缓存的端点
-app.get('/api/clear-cache', async (c) => {
-  try {
-    const date = new Date().toISOString().split('T')[0];
-    await c.env.RECIPES_KV.delete(`recommendations:${date}`);
-    return c.json({ success: true, message: '缓存已清除' });
-  } catch (error) {
-    return c.json({ error: '清除缓存失败' }, 500);
   }
 });
 
