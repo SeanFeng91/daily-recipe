@@ -316,4 +316,45 @@ export async function diagnoseAPI() {
   
   console.log('API诊断结果:', results);
   return results;
+}
+
+// 清除缓存
+export async function clearCache() {
+  console.log('正在清除缓存...');
+  try {
+    // 添加时间戳避免浏览器缓存
+    const url = `${API_BASE_URL}/api/clear-cache?_t=${Date.now()}`;
+    
+    const startTime = Date.now();
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    const endTime = Date.now();
+    console.log(`清除缓存请求耗时: ${endTime - startTime}ms`);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`清除缓存返回错误状态码 ${response.status}:`, errorText);
+      
+      // 尝试解析错误文本为JSON，如果不是有效的JSON则返回原始文本
+      let errorDetails = errorText;
+      try {
+        errorDetails = JSON.parse(errorText);
+      } catch (e) {
+        // 不是有效的JSON，使用原始文本
+      }
+      
+      throw new Error(`清除缓存失败: ${response.status} - ${typeof errorDetails === 'object' ? errorDetails.message || JSON.stringify(errorDetails) : errorDetails}`);
+    }
+    
+    const data = await response.json();
+    console.log('清除缓存响应:', data);
+    return data;
+  } catch (error) {
+    console.error('清除缓存出错:', error);
+    throw error;
+  }
 } 

@@ -53,7 +53,7 @@
     </main>
 
     <script type="module">
-        import { getDailyRecommendations, login, diagnoseAPI, CONFIG } from '/js/api.js';
+        import { getDailyRecommendations, login, diagnoseAPI, CONFIG, clearCache } from '/js/api.js';
 
         // 设置当前日期
         const dateElement = document.getElementById('current-date');
@@ -129,10 +129,11 @@
                 if (forceRefresh) {
                     console.log('强制刷新，尝试清除缓存...');
                     try {
-                        const clearCacheResponse = await fetch(`${CONFIG.current.apiBase}/api/clear-cache`);
-                        console.log('清除缓存响应:', await clearCacheResponse.json());
+                        const result = await clearCache();
+                        console.log('清除缓存结果:', result);
                     } catch (cacheError) {
                         console.error('清除缓存失败:', cacheError);
+                        // 继续执行，即使缓存清除失败
                     }
                 }
                 

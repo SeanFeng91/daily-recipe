@@ -85,16 +85,16 @@ app.post('/api/login', async (c) => {
 });
 
 // JWT 中间件
-app.use('/api/*', async (c, next) => {
-  // 排除不需要验证的接口
+app.use('*', async (c, next) => {
+  // 公共路径列表 - 不需要验证JWT
   const publicPaths = [
-    '/api/login', 
-    '/api/health', 
-    '/api/health/detailed', 
+    '/api/health',
     '/api/recommendations',
     '/api/history',
-    '/api/gallery',  // 添加画廊接口
-    '/api/user/preferences'  // 添加用户偏好接口
+    '/api/gallery',
+    '/api/clear-cache', // 添加清除缓存端点到公共路径
+    '/api/test-groq',
+    '/api/user/preferences/*'
   ];
   
   // 检查请求路径是否在公共路径列表中，或者是否以公共路径开头
@@ -141,16 +141,39 @@ app.use('/api/*', async (c, next) => {
   }
 });
 
-// 添加一个清除缓存的端点
+// 清除缓存API - 方便强制刷新
 app.get('/api/clear-cache', async (c) => {
   try {
-    const date = new Date().toISOString().split('T')[0];
-    console.log(`清除缓存: recommendations:${date}`);
-    await c.env.RECIPES_KV.delete(`recommendations:${date}`);
-    return c.json({ success: true, message: '缓存已清除', date });
+    // 获取当前日期作为键
+    const today = new Date().toISOString().split('T')[0];
+    const cacheKey = `recommendations_${today}`;
+    
+    // 检查KV存储是否可用
+    if (!c.env.RECIPES_KV) {
+      console.log('缓存清除失败: KV存储未配置');
+      return c.json({
+        status: 'error',
+        message: 'KV存储未配置，无法清除缓存',
+        timestamp: new Date().toISOString()
+      }, { status: 500 });
+    }
+    
+    // 删除缓存
+    await c.env.RECIPES_KV.delete(cacheKey);
+    console.log(`已清除缓存: ${cacheKey}`);
+    
+    return c.json({
+      status: 'success',
+      message: `已清除${today}的推荐缓存`,
+      timestamp: new Date().toISOString()
+    });
   } catch (error) {
-    console.error('清除缓存失败:', error);
-    return c.json({ error: '清除缓存失败', message: error.message }, 500);
+    console.error('清除缓存错误:', error);
+    return c.json({
+      status: 'error',
+      message: `清除缓存失败: ${error.message}`,
+      timestamp: new Date().toISOString()
+    }, { status: 500 });
   }
 });
 
