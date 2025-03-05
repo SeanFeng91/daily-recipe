@@ -74,7 +74,7 @@ app.post('/api/login', async (c) => {
 // JWT 中间件
 app.use('/api/*', async (c, next) => {
   // 排除不需要验证的接口
-  const publicPaths = ['/api/login', '/api/health', '/api/health/detailed', '/api/recommendations'];
+  const publicPaths = ['/api/login', '/api/health', '/api/health/detailed', '/api/recommendations', '/api/history'];
   if (publicPaths.includes(c.req.path)) {
     return next();
   }
@@ -237,7 +237,7 @@ app.post('/api/upload', async (c) => {
     };
     await c.env.RECIPES_KV.put(`image:${filename}`, JSON.stringify(imageRecord));
 
-    return c.json({ url: `https://your-worker.workers.dev/images/${filename}` });
+    return c.json({ url: `https://daily-recipe.fengyx91.workers.dev/images/${filename}` });
   } catch (error) {
     return c.json({ error: '上传失败' }, 500);
   }
