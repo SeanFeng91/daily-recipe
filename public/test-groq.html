@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GROQ API 测试</title>
+    <style>
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        h1 {
+            color: #0066cc;
+            border-bottom: 2px solid #0066cc;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            background-color: #f5f5f5;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        .test-button:hover {
+            background-color: #004e9c;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+        .log {
+            font-family: monospace;
+            margin-top: 15px;
+            padding: 15px;
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            height: 200px;
+            overflow-y: auto;
+        }
+        .status {
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+        .prompt-input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>GROQ API 测试工具</h1>
+    
+    <div class="test-section">
+        <h2>环境检查</h2>
+        <button id="env-check" class="test-button">检查环境变量</button>
+        <div id="env-result" class="result">点击按钮检查环境变量...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>直接测试 GROQ API</h2>
+        <p>这将通过 Workers API 发送请求到 GROQ</p>
+        <textarea id="prompt-input" class="prompt-input" rows="3" placeholder="输入提示 (例如: '请给我一个水煮牛肉的食谱')"></textarea>
+        <button id="test-groq" class="test-button">测试 GROQ API</button>
+        <div class="status" id="groq-status"></div>
+        <div id="groq-result" class="result">API 响应将显示在这里...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>推荐 API 测试</h2>
+        <p>测试通过 Workers 的推荐 API</p>
+        <button id="test-recommendations" class="test-button">测试推荐 API</button>
+        <button id="test-force-recommendations" class="test-button">强制刷新推荐</button>
+        <div class="status" id="recommendations-status"></div>
+        <div id="recommendations-result" class="result">推荐 API 响应将显示在这里...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>请求日志</h2>
+        <button id="clear-log" class="test-button">清除日志</button>
+        <div id="request-log" class="log"></div>
+    </div>
+
+    <script>
+        // 配置
+        const CONFIG = {
+            environments: {
+                development: {
+                    apiBase: 'http://localhost:8787',
+                    debug: true
+                },
+                production: {
+                    apiBase: 'https://daily-recipe.fengyx91.workers.dev',
+                    debug: false
+                }
+            },
+            get currentEnv() {
+                return window.location.hostname === 'localhost' ? 'development' : 'production';
+            },
+            get current() {
+                return this.environments[this.currentEnv];
+            }
+        };
+
+        // API基础URL
+        const API_BASE_URL = CONFIG.current.apiBase;
+        
+        // 日志函数
+        function log(message, isError = false) {
+            const logElement = document.getElementById('request-log');
+            const time = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.innerHTML = `<span style="color: #888;">[${time}]</span> ${message}`;
+            
+            if (isError) {
+                entry.style.color = 'red';
+            }
+            
+            logElement.appendChild(entry);
+            logElement.scrollTop = logElement.scrollHeight; // 自动滚动到底部
+        }
+        
+        // 清除日志
+        document.getElementById('clear-log').addEventListener('click', () => {
+            document.getElementById('request-log').innerHTML = '';
+        });
+        
+        // 检查环境变量
+        document.getElementById('env-check').addEventListener('click', async () => {
+            const resultElement = document.getElementById('env-result');
+            resultElement.textContent = '正在检查...';
+            
+            try {
+                log('发送健康检查请求...');
+                const startTime = Date.now();
+                const response = await fetch(`${API_BASE_URL}/api/health`);
+                const endTime = Date.now();
+                log(`响应时间: ${endTime - startTime}ms`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP错误: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                log(`健康检查响应: ${JSON.stringify(data)}`);
+                
+                resultElement.innerHTML = `
+                    <strong>API状态:</strong> ${data.status}<br>
+                    <strong>JWT密钥设置:</strong> ${data.env?.hasJwtSecret ? '✅' : '❌'}<br>
+                    <strong>GROQ密钥设置:</strong> ${data.env?.hasGroqKey ? '✅' : '❌'}<br>
+                    <strong>响应时间:</strong> ${endTime - startTime}ms<br>
+                    <strong>时间戳:</strong> ${data.timestamp}<br>
+                    <strong>详细信息:</strong><br>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                log(`健康检查失败: ${error.message}`, true);
+                resultElement.textContent = `检查失败: ${error.message}`;
+            }
+        });
+        
+        // 直接测试GROQ API
+        document.getElementById('test-groq').addEventListener('click', async () => {
+            const resultElement = document.getElementById('groq-result');
+            const statusElement = document.getElementById('groq-status');
+            const prompt = document.getElementById('prompt-input').value || '请给我一个水煮牛肉的食谱';
+            
+            resultElement.textContent = '正在请求...';
+            statusElement.textContent = '请求中...';
+            statusElement.className = 'status';
+            
+            try {
+                log(`发送GROQ测试请求，提示: "${prompt}"`);
+                const startTime = Date.now();
+                const response = await fetch(`${API_BASE_URL}/api/test-groq`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ prompt })
+                });
+                const endTime = Date.now();
+                log(`响应时间: ${endTime - startTime}ms`);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`GROQ测试失败: ${response.status} - ${errorText}`, true);
+                    throw new Error(`HTTP错误: ${response.status} - ${errorText}`);
+                }
+                
+                const data = await response.json();
+                log(`GROQ测试响应: ${JSON.stringify(data).substring(0, 100)}...`);
+                
+                statusElement.textContent = `✅ 成功 (${endTime - startTime}ms)`;
+                statusElement.className = 'status success';
+                resultElement.innerHTML = `
+                    <strong>请求成功!</strong><br>
+                    <strong>响应时间:</strong> ${endTime - startTime}ms<br>
+                    <strong>响应内容:</strong><br>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                log(`GROQ测试失败: ${error.message}`, true);
+                statusElement.textContent = `❌ 失败: ${error.message}`;
+                statusElement.className = 'status error';
+                resultElement.textContent = `请求失败: ${error.message}`;
+            }
+        });
+        
+        // 测试推荐API
+        async function testRecommendationsAPI(forceRefresh = false) {
+            const resultElement = document.getElementById('recommendations-result');
+            const statusElement = document.getElementById('recommendations-status');
+            
+            resultElement.textContent = '正在请求...';
+            statusElement.textContent = '请求中...';
+            statusElement.className = 'status';
+            
+            try {
+                // 构建URL查询参数
+                const params = new URLSearchParams();
+                params.append('_t', Date.now()); // 添加时间戳避免缓存
+                
+                if (forceRefresh) {
+                    params.append('nocache', 'true');
+                    log('请求推荐API（强制刷新）...');
+                } else {
+                    log('请求推荐API...');
+                }
+                
+                const requestUrl = `${API_BASE_URL}/api/recommendations?${params.toString()}`;
+                log(`请求URL: ${requestUrl}`);
+                
+                const startTime = Date.now();
+                const response = await fetch(requestUrl);
+                const endTime = Date.now();
+                log(`响应时间: ${endTime - startTime}ms`);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`推荐API请求失败: ${response.status} - ${errorText}`, true);
+                    throw new Error(`HTTP错误: ${response.status} - ${errorText}`);
+                }
+                
+                const data = await response.json();
+                log(`推荐API响应: ${JSON.stringify(data).substring(0, 100)}...`);
+                
+                statusElement.textContent = `✅ 成功 (${endTime - startTime}ms)`;
+                statusElement.className = 'status success';
+                resultElement.innerHTML = `
+                    <strong>请求成功!</strong><br>
+                    <strong>响应时间:</strong> ${endTime - startTime}ms<br>
+                    <strong>推荐数量:</strong> ${Array.isArray(data) ? data.length : '未知'}<br>
+                    <strong>响应内容:</strong><br>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                log(`推荐API请求失败: ${error.message}`, true);
+                statusElement.textContent = `❌ 失败: ${error.message}`;
+                statusElement.className = 'status error';
+                resultElement.textContent = `请求失败: ${error.message}`;
+            }
+        }
+        
+        // 绑定推荐API测试按钮
+        document.getElementById('test-recommendations').addEventListener('click', () => testRecommendationsAPI(false));
+        document.getElementById('test-force-recommendations').addEventListener('click', () => testRecommendationsAPI(true));
+        
+        // 页面加载时记录环境信息
+        window.addEventListener('DOMContentLoaded', () => {
+            log(`当前环境: ${CONFIG.currentEnv}`);
+            log(`API基础URL: ${API_BASE_URL}`);
+        });
+    </script>
+</body>
+</html> 

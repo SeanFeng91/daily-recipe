@@ -111,8 +111,7 @@ export async function getDailyRecommendations(forceRefresh = false) {
     const response = await fetch(requestUrl, {
       method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest'
+        'Content-Type': 'application/json'
       }
     });
     const endTime = Date.now();

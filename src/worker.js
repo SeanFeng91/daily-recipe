@@ -9,14 +9,27 @@ const CONFIG = {
 
 const app = new Hono();
 
-// CORS 中间件 - 允许前端页面访问
-app.use('*', cors({
-  origin: ['https://daily-recipe.pages.dev', 'http://localhost:8080', '*'], // 允许所有域名，方便调试
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
-  exposeHeaders: ['*'],
+// 调整CORS配置，允许Pages站点访问
+app.use(cors({
+  origin: ['https://daily-recipe.pages.dev', 'http://localhost:8080', 'http://localhost:3000'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  maxAge: 86400 // 24小时
 }));
+
+// 可选的额外CORS处理中间件
+app.options('*', (c) => {
+  // 处理预检请求
+  return new Response(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': c.req.headers.get('Origin') || '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+      'Access-Control-Max-Age': '86400',
+    },
+  });
+});
 
 // 添加日志中间件
 app.use('*', async (c, next) => {
@@ -618,6 +631,89 @@ app.get('/api/health/detailed', async (c) => {
       error: error.message,
       timestamp: new Date().toISOString()
     }, 500);
+  }
+});
+
+// 添加测试GROQ API的端点
+app.post('/api/test-groq', async (c) => {
+  const { prompt } = await c.req.json();
+  
+  // 记录请求
+  console.log(`收到GROQ测试请求: ${prompt?.substring(0, 50)}...`);
+  
+  // 检查GROQ API密钥
+  const GROQ_API_KEY = c.env.GROQ_API_KEY;
+  
+  if (!GROQ_API_KEY) {
+    console.log('测试失败: 未设置GROQ API密钥');
+    return c.json({
+      error: 'GROQ API密钥未配置',
+      status: 'failed',
+      timestamp: new Date().toISOString()
+    }, { status: 400 });
+  }
+  
+  try {
+    // 发送请求到GROQ API
+    const startTime = Date.now();
+    
+    // 限制生成内容的数量，并确保是中文回复
+    const systemPrompt = "你是一个厨师AI助手，专长于提供中文食谱和烹饪建议。请提供详细的食谱，包括材料清单和步骤说明。回复必须是中文。";
+    
+    // 准备请求体
+    const requestBody = {
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: prompt || "请给我一个简单的食谱" }
+      ],
+      model: "llama-3.1-8b-chat",
+      max_tokens: 1024
+    };
+    
+    // 发送请求到GROQ API
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${GROQ_API_KEY}`
+      },
+      body: JSON.stringify(requestBody)
+    });
+    
+    const endTime = Date.now();
+    console.log(`GROQ API响应时间: ${endTime - startTime}ms`);
+    
+    // 检查响应
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`GROQ API错误: ${response.status} - ${errorText}`);
+      return c.json({
+        error: `GROQ API返回错误: ${response.status}`,
+        details: errorText,
+        status: 'failed',
+        timestamp: new Date().toISOString()
+      }, { status: 500 });
+    }
+    
+    // 解析响应
+    const responseData = await response.json();
+    console.log(`成功获取GROQ响应: ${JSON.stringify(responseData).substring(0, 100)}...`);
+    
+    // 返回结果，包括执行时间和响应
+    return c.json({
+      status: 'success',
+      execution_time_ms: endTime - startTime,
+      timestamp: new Date().toISOString(),
+      prompt: prompt,
+      response: responseData
+    });
+  } catch (error) {
+    console.error(`GROQ测试执行错误: ${error.message}`);
+    return c.json({
+      error: `执行出错: ${error.message}`,
+      status: 'error',
+      timestamp: new Date().toISOString()
+    }, { status: 500 });
   }
 });
 
