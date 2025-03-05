@@ -261,7 +261,8 @@ app.get('/api/recommendations', async (c) => {
           'Authorization': `Bearer ${c.env.GROQ_API_KEY}`
         },
         body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
+          // model: "llama-3.3-70b-versatile",
+          model: "deepseek-r1-distill-llama-70b",
           messages: [{
             role: "user",
             content: prompt
