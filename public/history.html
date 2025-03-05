@@ -6,6 +6,146 @@
     <title>历史记录 - 每日食谱</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .calendar-section {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .calendar-nav button {
+            background: none;
+            border: none;
+            font-size: 1.2em;
+            cursor: pointer;
+            padding: 5px 10px;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+
+        .calendar-weekday {
+            text-align: center;
+            font-weight: bold;
+            padding: 10px;
+            color: #666;
+        }
+
+        .calendar-day {
+            text-align: center;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .calendar-day:hover {
+            background: #f0f0f0;
+        }
+
+        .calendar-day.active {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .calendar-day.has-recipe::after {
+            content: '';
+            position: absolute;
+            bottom: 3px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: #4CAF50;
+        }
+
+        .calendar-day.other-month {
+            color: #ccc;
+        }
+
+        .history-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .recipe-card {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+
+        .recipe-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .recipe-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+
+        .recipe-content {
+            padding: 15px;
+        }
+
+        .recipe-title {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .recipe-info {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .recipe-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .tag {
+            background: #f0f0f0;
+            padding: 3px 8px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            color: #666;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .error {
+            text-align: center;
+            padding: 20px;
+            color: #dc3545;
+        }
+    </style>
 </head>
 <body>
     <nav class="navbar">
@@ -23,16 +163,20 @@
     </nav>
 
     <main class="main-content">
-        <div class="date-header">
-            <h1>历史记录 <i class="fas fa-history"></i></h1>
-            <div class="date-selector">
-                <label for="history-date">选择日期：</label>
-                <input type="date" id="history-date" name="history-date">
-                <button id="load-history-btn" class="btn">查看</button>
+        <section class="calendar-section">
+            <div class="calendar-header">
+                <h2 id="calendar-title">2024年3月</h2>
+                <div class="calendar-nav">
+                    <button id="prev-month"><i class="fas fa-chevron-left"></i></button>
+                    <button id="next-month"><i class="fas fa-chevron-right"></i></button>
+                </div>
             </div>
-        </div>
+            <div class="calendar-grid" id="calendar-grid">
+                <!-- 日历内容将由JavaScript动态生成 -->
+            </div>
+        </section>
 
-        <div id="history-container">
+        <div id="history-container" class="history-container">
             <div class="loading">
                 <i class="fas fa-spinner fa-spin"></i> 正在加载历史记录...
             </div>
@@ -42,16 +186,66 @@
     <script type="module">
         import { getHistory } from '/js/api.js';
 
-        // 设置日期选择器默认值为今天
-        function setDefaultDate() {
-            const today = new Date();
-            const dateInput = document.getElementById('history-date');
-            dateInput.valueAsDate = today;
-            return today.toISOString().split('T')[0]; // 返回格式化的日期字符串
+        let currentDate = new Date();
+        let selectedDate = new Date();
+
+        // 格式化日期为 YYYY-MM-DD
+        function formatDate(date) {
+            return date.toISOString().split('T')[0];
+        }
+
+        // 生成日历
+        function generateCalendar(year, month) {
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const startDay = new Date(firstDay);
+            startDay.setDate(1 - firstDay.getDay());
+
+            const calendarGrid = document.getElementById('calendar-grid');
+            calendarGrid.innerHTML = '';
+
+            // 添加星期头部
+            const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+            weekdays.forEach(day => {
+                const weekdayDiv = document.createElement('div');
+                weekdayDiv.className = 'calendar-weekday';
+                weekdayDiv.textContent = day;
+                calendarGrid.appendChild(weekdayDiv);
+            });
+
+            // 生成日历格子
+            for (let i = 0; i < 42; i++) {
+                const date = new Date(startDay);
+                date.setDate(startDay.getDate() + i);
+
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'calendar-day';
+                if (date.getMonth() !== month) {
+                    dayDiv.classList.add('other-month');
+                }
+                if (formatDate(date) === formatDate(selectedDate)) {
+                    dayDiv.classList.add('active');
+                }
+                dayDiv.textContent = date.getDate();
+
+                dayDiv.addEventListener('click', () => {
+                    if (!dayDiv.classList.contains('other-month')) {
+                        document.querySelectorAll('.calendar-day').forEach(d => d.classList.remove('active'));
+                        dayDiv.classList.add('active');
+                        selectedDate = date;
+                        loadHistory(formatDate(date));
+                    }
+                });
+
+                calendarGrid.appendChild(dayDiv);
+            }
+
+            // 更新日历标题
+            document.getElementById('calendar-title').textContent = 
+                `${year}年${month + 1}月`;
         }
 
         async function loadHistory(date) {
-            console.log('开始加载历史记录，日期:', date);
             const container = document.getElementById('history-container');
             container.innerHTML = `
                 <div class="loading">
@@ -61,32 +255,38 @@
             
             try {
                 const history = await getHistory(date);
-                console.log('获取到历史数据:', history);
-
+                
                 if (!history.recipes || history.recipes.length === 0) {
-                    container.innerHTML = '<p class="info">该日期暂无历史记录</p>';
+                    container.innerHTML = `
+                        <div class="error">
+                            <i class="fas fa-info-circle"></i> 该日期暂无推荐记录
+                        </div>
+                    `;
                     return;
                 }
 
-                container.innerHTML = `
-                    <div class="history-card">
-                        <div class="history-date">${new Date(history.date).toLocaleDateString('zh-CN')}</div>
-                        <div class="history-recipes">
-                            ${history.recipes.map(recipe => `
-                                <div class="recipe-item">
-                                    <h3>${recipe.菜名}</h3>
-                                    <p>${recipe.简短描述}</p>
-                                    <div class="recipe-details">
-                                        <span><i class="fas fa-clock"></i> ${recipe.所需时间}</span>
-                                        <span><i class="fas fa-signal"></i> ${recipe.难度级别}</span>
-                                    </div>
-                                </div>
-                            `).join('')}
+                container.innerHTML = history.recipes.map(recipe => `
+                    <div class="recipe-card">
+                        <img src="${recipe.图片 || `https://source.unsplash.com/featured/300x200?food,chinese,cooking&sig=${Math.random()}`}" 
+                             alt="${recipe.菜名}" 
+                             class="recipe-image"
+                             onerror="this.src='https://source.unsplash.com/featured/300x200?food,chinese,cooking&sig=${Math.random()}'">
+                        <div class="recipe-content">
+                            <h3 class="recipe-title">${recipe.菜名}</h3>
+                            <div class="recipe-info">
+                                <span><i class="fas fa-clock"></i> ${recipe.所需时间}</span>
+                                <span><i class="fas fa-signal"></i> ${recipe.难度级别}</span>
+                            </div>
+                            <p>${recipe.简短描述}</p>
+                            <div class="recipe-tags">
+                                ${recipe.主要食材?.map(item => `
+                                    <span class="tag">${item}</span>
+                                `).join('') || ''}
+                            </div>
                         </div>
                     </div>
-                `;
+                `).join('');
             } catch (error) {
-                console.error('加载历史记录失败:', error);
                 container.innerHTML = `
                     <div class="error">
                         <i class="fas fa-exclamation-circle"></i> 加载失败：${error.message}
@@ -97,17 +297,19 @@
             }
         }
 
-        // 页面加载完成后的初始化
-        document.addEventListener('DOMContentLoaded', () => {
-            // 设置默认日期并加载
-            const defaultDate = setDefaultDate();
-            loadHistory(defaultDate);
-            
-            // 添加按钮点击事件
-            document.getElementById('load-history-btn').addEventListener('click', () => {
-                const dateInput = document.getElementById('history-date');
-                loadHistory(dateInput.value);
-            });
+        // 初始化
+        generateCalendar(currentDate.getFullYear(), currentDate.getMonth());
+        loadHistory(formatDate(currentDate));
+
+        // 绑定月份切换事件
+        document.getElementById('prev-month').addEventListener('click', () => {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            generateCalendar(currentDate.getFullYear(), currentDate.getMonth());
+        });
+
+        document.getElementById('next-month').addEventListener('click', () => {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            generateCalendar(currentDate.getFullYear(), currentDate.getMonth());
         });
     </script>
 </body>

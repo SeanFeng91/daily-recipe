@@ -12,7 +12,7 @@ const app = new Hono();
 
 // 调整CORS配置，允许Pages站点访问
 app.use(cors({
-  origin: ['https://daily-recipe.pages.dev', 'http://localhost:8080', 'http://localhost:3000'],
+  origin: ['https://daily-recipe.pages.dev', 'http://localhost:8080', 'http://localhost:3000', 'http://172.20.62.58:3000'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   maxAge: 86400 // 24小时
@@ -203,7 +203,7 @@ async function generateDishImage(dishName, c) {
     }
 
     // 构建提示词
-    const prompt = `一道美味的中国菜：${dishName}，高清实拍风格，餐盘摆盘精美，光线明亮，背景虚化，突出主体，食材新鲜，色彩诱人`;
+    const prompt = `一道美味的菜肴：${dishName}，高清，电影画面，餐盘摆盘精美，光线明亮，背景干净，突出主体，食材新鲜，色彩诱人`;
     const negativePrompt = "模糊, 变形, 低质量, 像素化, 水印";
 
     console.log('发送图片生成请求，提示词:', prompt);
@@ -262,7 +262,7 @@ app.get('/api/recommendations', async (c) => {
 
   try {
     console.log('准备调用GROQ API');
-    let prompt = `作为一个中餐菜谱推荐系统，请推荐2道今天适合做的菜。`;
+    let prompt = `作为一个智能菜谱推荐系统，请推荐2道今天适合做的菜。`;
     
     if (preferences) {
       prompt += ` 请考虑以下偏好: ${preferences}。`;

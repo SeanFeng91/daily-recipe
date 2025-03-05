@@ -4,18 +4,25 @@
 
 ## 功能特点
 
-- 每日AI推荐3道菜品
-- 详细的烹饪步骤和食材清单
+- 每日AI推荐菜品，包含详细的烹饪步骤和食材清单
+- AI自动生成菜品图片，展示效果更直观
+- 历史推荐记录查看，支持日历导航
 - 用户作品上传和展示
 - 个人收藏和历史记录
 - 用户偏好设置
+- 响应式设计，支持多设备访问
 
 ## 技术栈
 
 - 前端：HTML5 + CSS3 + JavaScript
+  - TailwindCSS - 样式框架
+  - Marked.js - Markdown渲染
+  - PrismJS - 代码高亮
 - 后端：Cloudflare Workers + Hono
 - 存储：Cloudflare KV + R2
-- AI：Groq API
+- AI服务：
+  - Groq API - 菜谱生成
+  - Silicon Flow API - 图片生成
 
 ## 本地开发
 
@@ -38,7 +45,11 @@ cp .env.example .env
 
 4. 启动开发服务器
 ```bash
+# 启动 Workers 开发服务器
 npm run dev
+
+# 启动前端开发服务器（在另一个终端）
+cd public && http-server -p 3000 --cors
 ```
 
 ## 部署
@@ -58,12 +69,13 @@ npm run deploy
 
 项目需要以下环境变量：
 
-- `GROQ_API_KEY`: Groq API密钥
-- `JWT_SECRET`: JWT签名密钥
+- `GROQ_API_KEY`: Groq API密钥，用于生成菜谱推荐
+- `SILICONFLOW_API_KEY`: Silicon Flow API密钥，用于生成菜品图片
+- `JWT_SECRET`: JWT签名密钥，用于用户认证
 - `CF_ACCOUNT_ID`: Cloudflare账户ID
 - `CF_API_TOKEN`: Cloudflare API Token
-- `KV_NAMESPACE_ID`: KV命名空间ID
-- `R2_BUCKET_NAME`: R2存储桶名称
+- `KV_NAMESPACE_ID`: KV命名空间ID，用于存储推荐历史
+- `R2_BUCKET_NAME`: R2存储桶名称，用于存储用户上传的图片
 
 ## 目录结构
 

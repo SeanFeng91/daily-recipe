@@ -3,18 +3,26 @@ export const CONFIG = {
   // 环境配置
   environments: {
     development: {
-      apiBase: 'http://localhost:8787',
+      apiBase: 'https://daily-recipe.fengyx91.workers.dev',  // 使用远程 API
       debug: true
     },
     production: {
-      apiBase: 'https://daily-recipe.fengyx91.workers.dev',
+      apiBase: 'https://daily-recipe.fengyx91.workers.dev',  // Workers 域名
       debug: false
     }
   },
   
+  // API 端点
+  endpoints: {
+    recommendations: '/api/recommendations',
+    history: '/api/history',
+    gallery: '/api/gallery',
+    upload: '/api/upload'
+  },
+  
   // 当前环境
   get currentEnv() {
-    return window.location.hostname === 'localhost' ? 'development' : 'production';
+    return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'development' : 'production';
   },
 
   // 获取当前配置
@@ -23,19 +31,16 @@ export const CONFIG = {
   }
 };
 
-// API基础URL
-const API_BASE_URL = CONFIG.current.apiBase;
-
 // 调试信息
 if (CONFIG.current.debug) {
   console.log('当前环境:', CONFIG.currentEnv);
   console.log('API配置:', CONFIG.current);
-  console.log('API基础URL:', API_BASE_URL);
+  console.log('API基础URL:', CONFIG.current.apiBase);
 }
 
 // API请求工具函数
 async function fetchAPI(endpoint, options = {}) {
-  const requestUrl = `${API_BASE_URL}/api${endpoint}`;
+  const requestUrl = `${CONFIG.current.apiBase}/api${endpoint}`;
   
   if (CONFIG.current.debug) {
     console.log(`请求 API: ${requestUrl}`, { options });
@@ -110,7 +115,7 @@ export async function getDailyRecommendations(forceRefresh = false, preferences 
     console.log('请求推荐API:', endpoint);
     
     // 使用更直接的fetch来获取更多控制
-    const requestUrl = `${API_BASE_URL}/api${endpoint}`;
+    const requestUrl = `${CONFIG.current.apiBase}/api${endpoint}`;
     console.log(`发送请求到: ${requestUrl}`);
     
     const startTime = Date.now();
@@ -153,7 +158,7 @@ export async function uploadImage(image, recipeId) {
     formData.append('image', image);
     formData.append('recipeId', recipeId);
 
-    const response = await fetch(`${API_BASE_URL}/api/upload`, {
+    const response = await fetch(`${CONFIG.current.apiBase}/api/upload`, {
       method: 'POST',
       body: formData
     });
@@ -179,12 +184,13 @@ export async function getUserGallery(userId) {
   }
   
   try {
-    // 注意这里使用了精确的路径格式
-    const data = await fetchAPI(`/gallery/${userId}`);
-    return data || [];
+    const response = await fetch(`${CONFIG.current.apiBase}${CONFIG.endpoints.gallery}?userId=${userId}`);
+    if (!response.ok) {
+      throw new Error(`获取作品集失败: ${response.status} - ${await response.text()}`);
+    }
+    return response.json();
   } catch (error) {
     console.error(`获取用户作品集失败 (userId=${userId}):`, error);
-    // 确保返回一个空数组，避免前端出错
     throw new Error(`获取作品集失败: ${error.message}`);
   }
 }
@@ -204,10 +210,9 @@ export async function updateUserPreferences(preferences) {
 
 // 获取历史记录
 export async function getHistory(date) {
-  // 如果没有提供日期，使用当前日期
   if (!date) {
     const today = new Date();
-    date = today.toISOString().split('T')[0]; // 格式：YYYY-MM-DD
+    date = today.toISOString().split('T')[0];
   }
   
   if (CONFIG.current.debug) {
@@ -215,12 +220,13 @@ export async function getHistory(date) {
   }
   
   try {
-    // 注意这里query参数的格式
-    const data = await fetchAPI(`/history?date=${encodeURIComponent(date)}`);
-    return data || { date, recipes: [] };
+    const response = await fetch(`${CONFIG.current.apiBase}${CONFIG.endpoints.history}?date=${date}`);
+    if (!response.ok) {
+      throw new Error(`获取历史记录失败: ${response.status} - ${await response.text()}`);
+    }
+    return response.json();
   } catch (error) {
     console.error(`获取历史记录失败 (date=${date}):`, error);
-    // 返回一个有效的空数据结构
     throw new Error(`获取历史记录失败: ${error.message}`);
   }
 }
@@ -229,7 +235,7 @@ export async function getHistory(date) {
 export async function checkHealth() {
   try {
     const startTime = new Date().getTime();
-    const response = await fetch(`${API_BASE_URL}/api/health`);
+    const response = await fetch(`${CONFIG.current.apiBase}/api/health`);
     const endTime = new Date().getTime();
     
     if (!response.ok) {
@@ -252,14 +258,14 @@ export async function diagnoseAPI() {
   const results = {
     timestamp: new Date().toISOString(),
     environment: CONFIG.currentEnv,
-    apiBase: API_BASE_URL,
+    apiBase: CONFIG.current.apiBase,
     tests: {}
   };
   
   // 测试网络连接
   try {
     const startTime = new Date().getTime();
-    const response = await fetch(API_BASE_URL, { 
+    const response = await fetch(CONFIG.current.apiBase, { 
       method: 'GET',
       headers: {
         'Accept': 'application/json'
@@ -290,7 +296,7 @@ export async function diagnoseAPI() {
   
   // 测试健康检查端点
   try {
-    const healthUrl = `${API_BASE_URL}/api/health`;
+    const healthUrl = `${CONFIG.current.apiBase}/api/health`;
     const startTime = new Date().getTime();
     const response = await fetch(healthUrl, {
       cache: 'no-store', // 避免缓存
@@ -329,7 +335,7 @@ export async function clearCache() {
   console.log('正在清除缓存...');
   try {
     // 添加时间戳避免浏览器缓存
-    const url = `${API_BASE_URL}/api/clear-cache?_t=${Date.now()}`;
+    const url = `${CONFIG.current.apiBase}/api/clear-cache?_t=${Date.now()}`;
     
     const startTime = Date.now();
     const response = await fetch(url, {
@@ -363,4 +369,16 @@ export async function clearCache() {
     console.error('清除缓存出错:', error);
     throw error;
   }
+}
+
+// 上传作品
+export async function uploadGalleryItem(formData) {
+  const response = await fetch(`${CONFIG.current.apiBase}${CONFIG.endpoints.upload}`, {
+    method: 'POST',
+    body: formData
+  });
+  if (!response.ok) {
+    throw new Error(`上传失败: ${response.status} - ${await response.text()}`);
+  }
+  return response.json();
 } 
