@@ -74,11 +74,28 @@ app.post('/api/login', async (c) => {
 // JWT 中间件
 app.use('/api/*', async (c, next) => {
   // 排除不需要验证的接口
-  const publicPaths = ['/api/login', '/api/health', '/api/health/detailed', '/api/recommendations', '/api/history'];
-  if (publicPaths.includes(c.req.path)) {
+  const publicPaths = [
+    '/api/login', 
+    '/api/health', 
+    '/api/health/detailed', 
+    '/api/recommendations',
+    '/api/history',
+    '/api/gallery',  // 添加画廊接口
+    '/api/user/preferences'  // 添加用户偏好接口
+  ];
+  
+  // 检查请求路径是否在公共路径列表中，或者是否以公共路径开头
+  const isPublicPath = publicPaths.some(path => 
+    c.req.path === path || 
+    (path.endsWith('/*') && c.req.path.startsWith(path.slice(0, -2)))
+  );
+  
+  if (isPublicPath || c.req.path.startsWith('/api/gallery/')) {
+    // 为公共路径设置默认用户
+    c.set('jwtPayload', { sub: 'demo' });
     return next();
   }
-
+  
   // 检查JWT密钥是否已配置
   if (!c.env.JWT_SECRET) {
     console.warn('JWT_SECRET未配置，跳过身份验证');
@@ -86,7 +103,7 @@ app.use('/api/*', async (c, next) => {
     c.set('jwtPayload', { sub: 'demo' });
     return next();
   }
-
+  
   try {
     const jwtMiddleware = jwt({
       secret: c.env.JWT_SECRET,
@@ -95,25 +112,42 @@ app.use('/api/*', async (c, next) => {
     return jwtMiddleware(c, next);
   } catch (error) {
     console.error('JWT验证失败:', error);
+    
+    // 验证失败时，设置一个默认用户以允许访问
+    c.set('jwtPayload', { sub: 'demo' });
+    return next();
+    
+    // 如果您想保持严格的身份验证，取消上面两行注释，并取消注释下面的返回语句
+    /*
     return c.json({ 
       error: '身份验证失败', 
       message: '请先登录', 
       details: CONFIG.debug ? error.message : undefined 
     }, 401);
+    */
   }
 });
 
 // AI推荐API
 app.get('/api/recommendations', async (c) => {
   try {
-    // 先尝试从KV中获取今天的推荐
+    // 从URL获取是否禁用缓存的参数
+    const disableCache = c.req.query('nocache') === 'true';
     const date = new Date().toISOString().split('T')[0];
-    const cached = await c.env.RECIPES_KV.get(`recommendations:${date}`);
+    console.log(`获取日期 ${date} 的推荐, 禁用缓存: ${disableCache}`);
     
-    if (cached) {
-      return c.json(JSON.parse(cached));
+    // 如果不禁用缓存，先尝试从KV中获取今天的推荐
+    if (!disableCache) {
+      const cached = await c.env.RECIPES_KV.get(`recommendations:${date}`);
+      if (cached) {
+        console.log(`找到缓存的推荐数据`);
+        return c.json(JSON.parse(cached));
+      }
+    } else {
+      console.log('禁用缓存，直接调用API');
     }
 
+    console.log(`未找到缓存数据，检查GROQ API密钥`);
     // 检查是否配置了GROQ API密钥
     if (!c.env.GROQ_API_KEY) {
       console.warn('GROQ_API_KEY未配置，使用默认数据');
@@ -149,6 +183,8 @@ app.get('/api/recommendations', async (c) => {
       return c.json(defaultRecommendations);
     }
 
+    console.log(`使用GROQ API获取推荐 (密钥: ${c.env.GROQ_API_KEY.substring(0, 4)}...)`);
+    
     // 如果有GROQ API密钥，则请求AI推荐
     const prompt = `作为一个专业的中餐厨师，请推荐3道今天适合烹饪的菜品。
     对于每道菜，请提供：
@@ -168,44 +204,129 @@ app.get('/api/recommendations', async (c) => {
       }
     ]`;
 
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${c.env.GROQ_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        messages: [{
-          role: "user",
-          content: prompt
-        }],
-        temperature: 0.7,
-        max_tokens: 1000
-      })
-    });
+    // 使用 try-catch 单独捕获 GROQ API 请求错误
+    try {
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${c.env.GROQ_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages: [{
+            role: "user",
+            content: prompt
+          }],
+          temperature: 0.7,
+          max_tokens: 1000
+        })
+      });
 
-    if (!response.ok) {
-      throw new Error('AI服务调用失败');
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`GROQ API请求失败: ${response.status} ${response.statusText}`, errorText);
+        throw new Error(`AI服务调用失败: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('GROQ API响应:', JSON.stringify(data).substring(0, 200) + '...');
+      
+      if (!data.choices?.[0]?.message?.content) {
+        console.error('AI响应格式错误，缺少content字段:', data);
+        throw new Error('AI响应格式错误');
+      }
+
+      // 格式验证和错误处理
+      let recommendations;
+      try {
+        // 尝试解析JSON
+        recommendations = JSON.parse(data.choices[0].message.content);
+        
+        // 验证数据结构
+        if (!Array.isArray(recommendations)) {
+          throw new Error('返回数据不是数组');
+        }
+        
+        // 验证是否有足够的推荐
+        if (recommendations.length === 0) {
+          throw new Error('推荐列表为空');
+        }
+        
+        // 验证每个推荐项的格式
+        recommendations.forEach((item, index) => {
+          if (!item.菜名 || !item.简短描述 || !item.所需时间 || !item.难度级别 || !Array.isArray(item.主要食材)) {
+            throw new Error(`第${index+1}个推荐项缺少必要字段`);
+          }
+        });
+      } catch (parseError) {
+        console.error('解析AI响应失败:', parseError, '原始内容:', data.choices[0].message.content);
+        
+        // 使用默认数据
+        recommendations = [
+          {
+            "菜名": "AI解析失败-红烧茄子",
+            "简短描述": "香气扑鼻，茄子软糯，汁浓味香。",
+            "所需时间": "40分钟",
+            "难度级别": "简单",
+            "主要食材": ["茄子", "葱", "姜", "蒜", "酱油"]
+          },
+          {
+            "菜名": "AI解析失败-西红柿炒鸡蛋",
+            "简短描述": "家常经典，酸甜可口。",
+            "所需时间": "15分钟",
+            "难度级别": "简单",
+            "主要食材": ["西红柿", "鸡蛋", "葱", "盐", "糖"]
+          }
+        ];
+      }
+      
+      // 存储到KV中
+      console.log(`存储推荐到KV: recommendations:${date}`);
+      await c.env.RECIPES_KV.put(`recommendations:${date}`, JSON.stringify(recommendations));
+
+      return c.json(recommendations);
+    } catch (groqError) {
+      console.error('GROQ API调用失败:', groqError);
+      
+      // 返回默认数据
+      const fallbackRecommendations = [
+        {
+          "菜名": "API错误-麻婆豆腐",
+          "简短描述": "四川名菜，麻辣鲜香。",
+          "所需时间": "30分钟",
+          "难度级别": "中等",
+          "主要食材": ["豆腐", "肉末", "豆瓣酱", "花椒", "辣椒"]
+        },
+        {
+          "菜名": "API错误-糖醋排骨",
+          "简短描述": "酸甜可口，色泽诱人。",
+          "所需时间": "60分钟",
+          "难度级别": "中等",
+          "主要食材": ["排骨", "白糖", "醋", "酱油", "料酒"]
+        }
+      ];
+      
+      // 存储到KV中
+      await c.env.RECIPES_KV.put(`recommendations:${date}`, JSON.stringify(fallbackRecommendations));
+      
+      return c.json(fallbackRecommendations);
     }
-
-    const data = await response.json();
-    if (!data.choices?.[0]?.message?.content) {
-      throw new Error('AI响应格式错误');
-    }
-
-    const recommendations = JSON.parse(data.choices[0].message.content);
-    if (!Array.isArray(recommendations) || recommendations.length === 0) {
-      throw new Error('推荐数据格式错误');
-    }
-
-    // 存储到KV中
-    await c.env.RECIPES_KV.put(`recommendations:${date}`, JSON.stringify(recommendations));
-
-    return c.json(recommendations);
   } catch (error) {
     console.error('推荐API错误:', error);
-    return c.json({ error: error.message || '获取推荐失败' }, 500);
+    return c.json({ 
+      error: error.message || '获取推荐失败',
+      timestamp: new Date().toISOString(),
+      fallbackRecommendations: [
+        {
+          "菜名": "服务器错误-番茄炒蛋",
+          "简短描述": "家常便饭，简单美味。",
+          "所需时间": "10分钟",
+          "难度级别": "简单",
+          "主要食材": ["番茄", "鸡蛋", "盐", "糖", "葱花"]
+        }
+      ]
+    });
   }
 });
 
@@ -483,6 +604,17 @@ app.get('/api/health/detailed', async (c) => {
       error: error.message,
       timestamp: new Date().toISOString()
     }, 500);
+  }
+});
+
+// 添加一个清除缓存的端点
+app.get('/api/clear-cache', async (c) => {
+  try {
+    const date = new Date().toISOString().split('T')[0];
+    await c.env.RECIPES_KV.delete(`recommendations:${date}`);
+    return c.json({ success: true, message: '缓存已清除' });
+  } catch (error) {
+    return c.json({ error: '清除缓存失败' }, 500);
   }
 });
 

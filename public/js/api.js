@@ -97,14 +97,16 @@ export async function login() {
 
 // 获取每日推荐
 export async function getDailyRecommendations() {
+  console.log('获取每日推荐');
+  
   try {
-    const response = await fetch(`${API_BASE_URL}/api/recommendations`);
-    if (!response.ok) {
-      throw new Error('获取推荐失败');
-    }
-    return await response.json();
+    // 添加时间戳避免缓存
+    const timestamp = new Date().getTime();
+    const response = await fetchAPI(`/recommendations?_=${timestamp}`);
+    console.log('每日推荐响应:', response);
+    return response;
   } catch (error) {
-    console.error('获取推荐错误:', error);
+    console.error('获取每日推荐失败:', error);
     throw error;
   }
 }

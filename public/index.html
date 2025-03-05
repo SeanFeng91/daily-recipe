@@ -42,6 +42,12 @@
             <h3>API连接诊断</h3>
             <pre id="api-status-content"></pre>
         </div>
+
+        <div id="api-status" style="margin-top: 20px; padding: 10px; background-color: #f9f9f9; border-radius: 5px;">
+            <h4>API状态</h4>
+            <div id="api-status-content">正在检查...</div>
+            <button onclick="checkAPIStatus()">检查API状态</button>
+        </div>
     </main>
 
     <script type="module">
@@ -83,36 +89,56 @@
         });
 
         // 加载推荐菜品
-        async function loadRecommendations() {
-            const container = document.getElementById('recipes-container');
+        async function loadRecommendations(forceRefresh = false) {
+            const loadingIndicator = document.getElementById('loading-indicator');
+            const recommendationsContainer = document.getElementById('recommendations-container');
+            
+            loadingIndicator.style.display = 'block';
+            recommendationsContainer.innerHTML = '';
             
             try {
-                const recommendations = await getDailyRecommendations();
+                // 添加强制刷新参数
+                const url = forceRefresh ? 
+                    '/api/clear-cache' : 
+                    '/api/recommendations';
                 
-                container.innerHTML = recommendations.map(recipe => `
+                // 如果是强制刷新，先清除缓存
+                if (forceRefresh) {
+                    await fetchAPI(url);
+                }
+                
+                const recommendations = await getDailyRecommendations();
+                console.log('获取到的推荐:', recommendations);
+                
+                // 检查推荐是否为数组
+                if (!Array.isArray(recommendations)) {
+                    throw new Error('推荐数据格式错误');
+                }
+                
+                // 显示推荐
+                recommendationsContainer.innerHTML = recommendations.map(recipe => `
                     <div class="recipe-card">
-                        <img src="${recipe.image || 'https://via.placeholder.com/300x200'}" alt="${recipe.菜名}" class="recipe-image">
-                        <div class="recipe-content">
-                            <h2 class="recipe-title">${recipe.菜名}</h2>
-                            <p>${recipe.简短描述}</p>
-                            <div class="recipe-info">
-                                <div class="recipe-stats">
-                                    <span class="stat"><i class="fas fa-clock"></i> ${recipe.所需时间}</span>
-                                    <span class="stat"><i class="fas fa-fire"></i> ${recipe.难度级别}</span>
-                                </div>
-                                <button class="action-button">查看详情</button>
-                            </div>
+                        <h3>${recipe.菜名}</h3>
+                        <p>${recipe.简短描述}</p>
+                        <div class="recipe-details">
+                            <span>🕒 ${recipe.所需时间}</span>
+                            <span>📊 ${recipe.难度级别}</span>
+                        </div>
+                        <div class="recipe-ingredients">
+                            <strong>主要食材:</strong> ${recipe.主要食材.join(', ')}
                         </div>
                     </div>
                 `).join('');
             } catch (error) {
-                container.innerHTML = `
-                    <div class="error">
-                        <i class="fas fa-exclamation-circle"></i> 加载失败：${error.message}
-                        <br>
-                        <small>请检查网络连接或刷新页面重试</small>
+                console.error('加载推荐失败:', error);
+                recommendationsContainer.innerHTML = `
+                    <div class="error-message">
+                        <p>加载推荐失败: ${error.message}</p>
+                        <button onclick="loadRecommendations(true)">重试</button>
                     </div>
                 `;
+            } finally {
+                loadingIndicator.style.display = 'none';
             }
         }
 
@@ -139,6 +165,64 @@
 
         // 页面加载时检查登录状态
         checkLoginStatus();
+
+        // 添加强制刷新按钮
+        document.addEventListener('DOMContentLoaded', () => {
+            const controlsContainer = document.querySelector('.page-controls');
+            if (controlsContainer) {
+                const refreshButton = document.createElement('button');
+                refreshButton.className = 'refresh-button';
+                refreshButton.textContent = '强制刷新推荐';
+                refreshButton.onclick = () => loadRecommendations(true);
+                controlsContainer.appendChild(refreshButton);
+            }
+        });
+
+        // 添加API状态检查函数
+        async function checkAPIStatus() {
+            const statusContent = document.getElementById('api-status-content');
+            statusContent.innerHTML = '正在检查...';
+            
+            try {
+                // 检查基本健康状态
+                const health = await fetchAPI('/health');
+                // 检查详细健康状态
+                const detailedHealth = await fetchAPI('/health/detailed');
+                
+                statusContent.innerHTML = `
+                    <p><strong>API状态:</strong> ${health.status}</p>
+                    <p><strong>JWT密钥设置:</strong> ${health.env.hasJwtSecret ? '✅' : '❌'}</p>
+                    <p><strong>GROQ密钥设置:</strong> ${health.env.hasGroqKey ? '✅' : '❌'}</p>
+                    <p><strong>KV状态:</strong> ${detailedHealth.kv}</p>
+                    <p><strong>时间戳:</strong> ${health.timestamp}</p>
+                    <p><button onclick="testRecommendationAPI()">测试推荐API</button></p>
+                `;
+            } catch (error) {
+                statusContent.innerHTML = `<p>检查失败: ${error.message}</p>`;
+            }
+        }
+
+        // 添加测试推荐API函数
+        async function testRecommendationAPI() {
+            const statusContent = document.getElementById('api-status-content');
+            statusContent.innerHTML += '<p>正在测试推荐API...</p>';
+            
+            try {
+                const startTime = Date.now();
+                // 使用nocache参数强制调用GROQ API
+                const recommendations = await fetchAPI('/recommendations?nocache=true');
+                const endTime = Date.now();
+                
+                statusContent.innerHTML += `
+                    <p>推荐API响应时间: ${endTime - startTime}ms</p>
+                    <p>推荐数量: ${Array.isArray(recommendations) ? recommendations.length : '未知'}</p>
+                    <p>内容样例: ${JSON.stringify(recommendations).substring(0, 100)}...</p>
+                    <p><button onclick="loadRecommendations(true)">刷新页面推荐</button></p>
+                `;
+            } catch (error) {
+                statusContent.innerHTML += `<p>推荐API测试失败: ${error.message}</p>`;
+            }
+        }
     </script>
 </body>
 </html> 
