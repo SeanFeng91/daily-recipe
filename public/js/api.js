@@ -222,13 +222,27 @@ export async function diagnoseAPI() {
   // 测试网络连接
   try {
     const startTime = new Date().getTime();
-    const response = await fetch(API_BASE_URL, { method: 'HEAD' });
+    const response = await fetch(API_BASE_URL, { 
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
+      },
+      cache: 'no-store' // 避免缓存
+    });
     const endTime = new Date().getTime();
     
+    let responseData = null;
+    try {
+      responseData = await response.json();
+    } catch (e) {
+      // 忽略解析错误
+    }
+    
     results.tests.network = {
-      success: true,
+      success: response.status < 500, // 我们认为404也是"成功"的，因为至少服务器在响应
       time: endTime - startTime,
-      status: response.status
+      status: response.status,
+      data: responseData
     };
   } catch (error) {
     results.tests.network = {
@@ -239,10 +253,28 @@ export async function diagnoseAPI() {
   
   // 测试健康检查端点
   try {
-    const health = await checkHealth();
+    const healthUrl = `${API_BASE_URL}/api/health`;
+    const startTime = new Date().getTime();
+    const response = await fetch(healthUrl, {
+      cache: 'no-store', // 避免缓存
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+    const endTime = new Date().getTime();
+    
+    let healthData = null;
+    try {
+      healthData = await response.json();
+    } catch (e) {
+      // 忽略解析错误
+    }
+    
     results.tests.health = {
-      success: true,
-      data: health
+      success: response.ok,
+      time: endTime - startTime,
+      status: response.status,
+      data: healthData
     };
   } catch (error) {
     results.tests.health = {

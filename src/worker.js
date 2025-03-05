@@ -2,6 +2,11 @@ import { Hono } from 'hono';
 import { jwt } from 'hono/jwt';
 import { cors } from 'hono/cors';
 
+// 配置常量
+const CONFIG = {
+  debug: process.env.NODE_ENV !== 'production'
+};
+
 const app = new Hono();
 
 // CORS 中间件 - 允许前端页面访问
@@ -16,13 +21,28 @@ app.use('*', cors({
 // 添加日志中间件
 app.use('*', async (c, next) => {
   console.log(`[${new Date().toISOString()}] ${c.req.method} ${c.req.url}`);
-  console.log('Headers:', JSON.stringify(c.req.headers));
   try {
     await next();
   } catch (err) {
     console.error(`[错误] ${c.req.method} ${c.req.url}:`, err);
     return c.json({ error: '服务器内部错误', details: err.message }, 500);
   }
+});
+
+// 根路径处理 - 返回API信息
+app.get('/', (c) => {
+  return c.json({
+    name: '每日食谱 API',
+    version: '1.0.0',
+    status: 'running',
+    endpoints: [
+      '/api/health',
+      '/api/recommendations',
+      '/api/history',
+      '/api/gallery',
+      '/api/user/preferences'
+    ]
+  });
 });
 
 // 登录API
@@ -53,16 +73,26 @@ app.post('/api/login', async (c) => {
 
 // JWT 中间件
 app.use('/api/*', async (c, next) => {
-  // 排除登录接口
-  if (c.req.path === '/api/login') {
+  // 排除不需要验证的接口
+  const publicPaths = ['/api/login', '/api/health', '/api/health/detailed'];
+  if (publicPaths.includes(c.req.path)) {
     return next();
   }
 
-  const jwtMiddleware = jwt({
-    secret: c.env.JWT_SECRET,
-    cookie: 'auth'
-  });
-  return jwtMiddleware(c, next);
+  try {
+    const jwtMiddleware = jwt({
+      secret: c.env.JWT_SECRET,
+      cookie: 'auth'
+    });
+    return jwtMiddleware(c, next);
+  } catch (error) {
+    console.error('JWT验证失败:', error);
+    return c.json({ 
+      error: '身份验证失败', 
+      message: '请先登录', 
+      details: CONFIG.debug ? error.message : undefined 
+    }, 401);
+  }
 });
 
 // AI推荐API
@@ -261,16 +291,10 @@ app.get('/api/history', async (c) => {
 // 健康检查API
 app.get('/api/health', async (c) => {
   try {
-    // 测试KV连接
-    const testKey = 'health-check';
-    await c.env.RECIPES_KV.put(testKey, 'ok');
-    const testValue = await c.env.RECIPES_KV.get(testKey);
-    await c.env.RECIPES_KV.delete(testKey);
-
+    // 简化健康检查，不执行可能失败的KV操作
     return c.json({
       status: 'ok',
       timestamp: new Date().toISOString(),
-      kv: testValue === 'ok' ? 'connected' : 'error',
       env: {
         hasJwtSecret: !!c.env.JWT_SECRET,
         hasGroqKey: !!c.env.GROQ_API_KEY,
@@ -280,6 +304,42 @@ app.get('/api/health', async (c) => {
     });
   } catch (error) {
     console.error('健康检查失败:', error);
+    return c.json({
+      status: 'error',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    }, 500);
+  }
+});
+
+// 添加详细健康检查API，仅在必要时使用
+app.get('/api/health/detailed', async (c) => {
+  try {
+    // 测试KV连接
+    let kvStatus = 'unknown';
+    try {
+      const testKey = 'health-check';
+      await c.env.RECIPES_KV.put(testKey, 'ok');
+      const testValue = await c.env.RECIPES_KV.get(testKey);
+      await c.env.RECIPES_KV.delete(testKey);
+      kvStatus = testValue === 'ok' ? 'connected' : 'error';
+    } catch (kvError) {
+      kvStatus = `error: ${kvError.message}`;
+    }
+
+    return c.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      kv: kvStatus,
+      env: {
+        hasJwtSecret: !!c.env.JWT_SECRET,
+        hasGroqKey: !!c.env.GROQ_API_KEY,
+        hasKv: !!c.env.RECIPES_KV,
+        hasR2: !!c.env.RECIPE_IMAGES
+      }
+    });
+  } catch (error) {
+    console.error('详细健康检查失败:', error);
     return c.json({
       status: 'error',
       error: error.message,
