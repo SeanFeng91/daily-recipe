@@ -259,7 +259,7 @@ app.get('/api/recommendations', async (c) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'deepseek-r1-distill-llama-70b',
+        model: 'qwen-2.5-32b',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
         max_tokens: 10000
