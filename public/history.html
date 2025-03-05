@@ -25,6 +25,11 @@
     <main class="main-content">
         <div class="date-header">
             <h1>历史记录 <i class="fas fa-history"></i></h1>
+            <div class="date-selector">
+                <label for="history-date">选择日期：</label>
+                <input type="date" id="history-date" name="history-date">
+                <button id="load-history-btn" class="btn">查看</button>
+            </div>
         </div>
 
         <div id="history-container">
@@ -37,16 +42,29 @@
     <script type="module">
         import { getHistory } from '/js/api.js';
 
-        async function loadHistory() {
-            console.log('开始加载历史记录...');
+        // 设置日期选择器默认值为今天
+        function setDefaultDate() {
+            const today = new Date();
+            const dateInput = document.getElementById('history-date');
+            dateInput.valueAsDate = today;
+            return today.toISOString().split('T')[0]; // 返回格式化的日期字符串
+        }
+
+        async function loadHistory(date) {
+            console.log('开始加载历史记录，日期:', date);
             const container = document.getElementById('history-container');
+            container.innerHTML = `
+                <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i> 正在加载历史记录...
+                </div>
+            `;
+            
             try {
-                console.log('调用 getHistory API...');
-                const history = await getHistory();
+                const history = await getHistory(date);
                 console.log('获取到历史数据:', history);
 
                 if (!history.recipes || history.recipes.length === 0) {
-                    container.innerHTML = '<p class="info">暂无历史记录</p>';
+                    container.innerHTML = '<p class="info">该日期暂无历史记录</p>';
                     return;
                 }
 
@@ -79,9 +97,18 @@
             }
         }
 
-        // 页面加载时加载历史记录
-        console.log('页面加载完成，准备加载历史记录...');
-        loadHistory();
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            // 设置默认日期并加载
+            const defaultDate = setDefaultDate();
+            loadHistory(defaultDate);
+            
+            // 添加按钮点击事件
+            document.getElementById('load-history-btn').addEventListener('click', () => {
+                const dateInput = document.getElementById('history-date');
+                loadHistory(dateInput.value);
+            });
+        });
     </script>
 </body>
 </html> 

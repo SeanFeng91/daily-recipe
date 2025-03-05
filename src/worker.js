@@ -6,11 +6,24 @@ const app = new Hono();
 
 // CORS 中间件 - 允许前端页面访问
 app.use('*', cors({
-  origin: ['https://daily-recipe.pages.dev', 'http://localhost:8080'], // 允许的域名
+  origin: ['https://daily-recipe.pages.dev', 'http://localhost:8080', '*'], // 允许所有域名，方便调试
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
+  exposeHeaders: ['*'],
 }));
+
+// 添加日志中间件
+app.use('*', async (c, next) => {
+  console.log(`[${new Date().toISOString()}] ${c.req.method} ${c.req.url}`);
+  console.log('Headers:', JSON.stringify(c.req.headers));
+  try {
+    await next();
+  } catch (err) {
+    console.error(`[错误] ${c.req.method} ${c.req.url}:`, err);
+    return c.json({ error: '服务器内部错误', details: err.message }, 500);
+  }
+});
 
 // 登录API
 app.post('/api/login', async (c) => {
@@ -168,6 +181,28 @@ app.get('/api/gallery', async (c) => {
 
     return c.json(gallery);
   } catch (error) {
+    console.error('获取作品集失败:', error);
+    return c.json({ error: '获取作品失败' }, 500);
+  }
+});
+
+// 获取特定用户的作品API
+app.get('/api/gallery/:userId', async (c) => {
+  try {
+    const userId = c.req.param('userId');
+    console.log(`获取用户作品，userId: ${userId}`);
+    
+    // 这里简单返回所有作品，真实应用中应该根据userId过滤
+    const images = await c.env.RECIPES_KV.list({ prefix: `image:` });
+    
+    const gallery = await Promise.all(images.keys.map(async (key) => {
+      const record = await c.env.RECIPES_KV.get(key.name);
+      return JSON.parse(record);
+    }));
+
+    return c.json(gallery);
+  } catch (error) {
+    console.error('获取用户作品失败:', error, '用户ID:', c.req.param('userId'));
     return c.json({ error: '获取作品失败' }, 500);
   }
 });

@@ -136,7 +136,20 @@ export async function getUserGallery(userId) {
   if (!userId) {
     throw new Error('缺少必要参数：userId');
   }
-  return fetchAPI(`/gallery/${userId}`);
+  
+  if (CONFIG.current.debug) {
+    console.log(`获取用户作品集，userId: ${userId}`);
+  }
+  
+  try {
+    // 注意这里使用了精确的路径格式
+    const data = await fetchAPI(`/gallery/${userId}`);
+    return data || [];
+  } catch (error) {
+    console.error(`获取用户作品集失败 (userId=${userId}):`, error);
+    // 确保返回一个空数组，避免前端出错
+    throw new Error(`获取作品集失败: ${error.message}`);
+  }
 }
 
 // 获取用户偏好设置
@@ -153,17 +166,91 @@ export async function updateUserPreferences(preferences) {
 }
 
 // 获取历史记录
-export async function getHistory(date = new Date().toISOString().split('T')[0]) {
-  return fetchAPI(`/history?date=${date}`);
+export async function getHistory(date) {
+  // 如果没有提供日期，使用当前日期
+  if (!date) {
+    const today = new Date();
+    date = today.toISOString().split('T')[0]; // 格式：YYYY-MM-DD
+  }
+  
+  if (CONFIG.current.debug) {
+    console.log(`获取历史记录，日期: ${date}`);
+  }
+  
+  try {
+    // 注意这里query参数的格式
+    const data = await fetchAPI(`/history?date=${encodeURIComponent(date)}`);
+    return data || { date, recipes: [] };
+  } catch (error) {
+    console.error(`获取历史记录失败 (date=${date}):`, error);
+    // 返回一个有效的空数据结构
+    throw new Error(`获取历史记录失败: ${error.message}`);
+  }
 }
 
 // 健康检查函数
 export async function checkHealth() {
   try {
+    const startTime = new Date().getTime();
     const response = await fetch(`${API_BASE_URL}/api/health`);
-    return await response.json();
+    const endTime = new Date().getTime();
+    
+    if (!response.ok) {
+      throw new Error(`健康检查失败: HTTP ${response.status}`);
+    }
+    
+    const data = await response.json();
+    data.responseTime = endTime - startTime;
+    
+    console.log('健康检查结果:', data);
+    return data;
   } catch (error) {
     console.error('健康检查失败:', error);
     throw error;
   }
+}
+
+// API诊断工具函数
+export async function diagnoseAPI() {
+  const results = {
+    timestamp: new Date().toISOString(),
+    environment: CONFIG.currentEnv,
+    apiBase: API_BASE_URL,
+    tests: {}
+  };
+  
+  // 测试网络连接
+  try {
+    const startTime = new Date().getTime();
+    const response = await fetch(API_BASE_URL, { method: 'HEAD' });
+    const endTime = new Date().getTime();
+    
+    results.tests.network = {
+      success: true,
+      time: endTime - startTime,
+      status: response.status
+    };
+  } catch (error) {
+    results.tests.network = {
+      success: false,
+      error: error.message
+    };
+  }
+  
+  // 测试健康检查端点
+  try {
+    const health = await checkHealth();
+    results.tests.health = {
+      success: true,
+      data: health
+    };
+  } catch (error) {
+    results.tests.health = {
+      success: false,
+      error: error.message
+    };
+  }
+  
+  console.log('API诊断结果:', results);
+  return results;
 } 

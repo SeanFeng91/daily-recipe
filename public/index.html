@@ -26,6 +26,10 @@
         <div class="date-header">
             <h1>今日推荐 <i class="fas fa-star" style="color: #ffd700;"></i></h1>
             <p id="current-date"></p>
+            <div class="api-status">
+                <button id="check-api" class="btn"><i class="fas fa-network-wired"></i> 检查API连接</button>
+                <span id="api-status-indicator"></span>
+            </div>
         </div>
 
         <div class="recipes-grid" id="recipes-container">
@@ -33,10 +37,15 @@
                 <i class="fas fa-spinner fa-spin"></i> 正在加载推荐菜品...
             </div>
         </div>
+        
+        <div id="api-status-details" class="api-status-details" style="display: none;">
+            <h3>API连接诊断</h3>
+            <pre id="api-status-content"></pre>
+        </div>
     </main>
 
     <script type="module">
-        import { getDailyRecommendations, login } from '/js/api.js';
+        import { getDailyRecommendations, login, diagnoseAPI } from '/js/api.js';
 
         // 设置当前日期
         const dateElement = document.getElementById('current-date');
@@ -44,6 +53,33 @@
             year: 'numeric',
             month: 'long',
             day: 'numeric'
+        });
+
+        // API状态检查
+        document.getElementById('check-api').addEventListener('click', async () => {
+            const statusIndicator = document.getElementById('api-status-indicator');
+            const statusDetails = document.getElementById('api-status-details');
+            const statusContent = document.getElementById('api-status-content');
+            
+            statusIndicator.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 检查中...';
+            statusDetails.style.display = 'none';
+            
+            try {
+                const diagnosticResults = await diagnoseAPI();
+                
+                if (diagnosticResults.tests.network.success && diagnosticResults.tests.health.success) {
+                    statusIndicator.innerHTML = '<i class="fas fa-check-circle" style="color: green;"></i> API连接正常';
+                } else {
+                    statusIndicator.innerHTML = '<i class="fas fa-exclamation-circle" style="color: red;"></i> API连接异常';
+                }
+                
+                statusContent.textContent = JSON.stringify(diagnosticResults, null, 2);
+                statusDetails.style.display = 'block';
+            } catch (error) {
+                statusIndicator.innerHTML = '<i class="fas fa-times-circle" style="color: red;"></i> 检查失败';
+                statusContent.textContent = error.message;
+                statusDetails.style.display = 'block';
+            }
         });
 
         // 加载推荐菜品
