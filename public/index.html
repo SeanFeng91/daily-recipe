@@ -30,10 +30,11 @@
                 <button id="check-api" class="btn"><i class="fas fa-network-wired"></i> 检查API连接</button>
                 <span id="api-status-indicator"></span>
             </div>
+            <button id="loginBtn" class="btn" style="display: none;"><i class="fas fa-sign-in-alt"></i> 登录</button>
         </div>
 
         <div class="recipes-grid" id="recipes-container">
-            <div class="loading">
+            <div class="loading" id="loading-indicator">
                 <i class="fas fa-spinner fa-spin"></i> 正在加载推荐菜品...
             </div>
         </div>
@@ -46,7 +47,7 @@
         <div id="api-status" style="margin-top: 20px; padding: 10px; background-color: #f9f9f9; border-radius: 5px;">
             <h4>API状态</h4>
             <div id="api-status-content">正在检查...</div>
-            <button onclick="checkAPIStatus()">检查API状态</button>
+            <button id="check-api-status-btn">检查API状态</button>
         </div>
     </main>
 
@@ -89,24 +90,16 @@
         });
 
         // 加载推荐菜品
-        async function loadRecommendations(forceRefresh = false) {
+        async function loadRecommendations() {
             const loadingIndicator = document.getElementById('loading-indicator');
-            const recommendationsContainer = document.getElementById('recommendations-container');
+            const recipesContainer = document.getElementById('recipes-container');
             
+            // 确保显示加载指示器
             loadingIndicator.style.display = 'block';
-            recommendationsContainer.innerHTML = '';
             
             try {
-                // 添加强制刷新参数
-                const url = forceRefresh ? 
-                    '/api/clear-cache' : 
-                    '/api/recommendations';
-                
-                // 如果是强制刷新，先清除缓存
-                if (forceRefresh) {
-                    await fetchAPI(url);
-                }
-                
+                // 添加一个随机参数避免缓存
+                console.log('正在获取每日推荐...');
                 const recommendations = await getDailyRecommendations();
                 console.log('获取到的推荐:', recommendations);
                 
@@ -116,28 +109,38 @@
                 }
                 
                 // 显示推荐
-                recommendationsContainer.innerHTML = recommendations.map(recipe => `
-                    <div class="recipe-card">
-                        <h3>${recipe.菜名}</h3>
-                        <p>${recipe.简短描述}</p>
-                        <div class="recipe-details">
-                            <span>🕒 ${recipe.所需时间}</span>
-                            <span>📊 ${recipe.难度级别}</span>
+                let html = '';
+                recommendations.forEach(recipe => {
+                    html += `
+                        <div class="recipe-card">
+                            <h3>${recipe.菜名}</h3>
+                            <p>${recipe.简短描述}</p>
+                            <div class="recipe-details">
+                                <span>🕒 ${recipe.所需时间}</span>
+                                <span>📊 ${recipe.难度级别}</span>
+                            </div>
+                            <div class="recipe-ingredients">
+                                <strong>主要食材:</strong> ${recipe.主要食材.join(', ')}
+                            </div>
                         </div>
-                        <div class="recipe-ingredients">
-                            <strong>主要食材:</strong> ${recipe.主要食材.join(', ')}
-                        </div>
-                    </div>
-                `).join('');
+                    `;
+                });
+                
+                recipesContainer.innerHTML = html;
             } catch (error) {
                 console.error('加载推荐失败:', error);
-                recommendationsContainer.innerHTML = `
+                recipesContainer.innerHTML = `
                     <div class="error-message">
                         <p>加载推荐失败: ${error.message}</p>
-                        <button onclick="loadRecommendations(true)">重试</button>
+                        <button id="retry-btn">重试</button>
                     </div>
                 `;
+                
+                document.getElementById('retry-btn')?.addEventListener('click', () => {
+                    loadRecommendations();
+                });
             } finally {
+                // 隐藏加载指示器
                 loadingIndicator.style.display = 'none';
             }
         }
@@ -146,83 +149,89 @@
         async function checkLoginStatus() {
             try {
                 await getDailyRecommendations();
-                document.getElementById('loginBtn').style.display = 'none';
+                const loginBtn = document.getElementById('loginBtn');
+                if (loginBtn) loginBtn.style.display = 'none';
                 loadRecommendations();
             } catch (error) {
-                document.getElementById('loginBtn').style.display = 'block';
+                const loginBtn = document.getElementById('loginBtn');
+                if (loginBtn) loginBtn.style.display = 'block';
                 document.getElementById('recipes-container').innerHTML = '<p class="error">请先登录</p>';
             }
         }
 
         // 登录按钮点击事件
-        document.getElementById('loginBtn').addEventListener('click', async () => {
-            if (await login()) {
-                checkLoginStatus();
-            } else {
-                alert('登录失败，请重试');
+        document.getElementById('loginBtn')?.addEventListener('click', async () => {
+            try {
+                if (await login()) {
+                    checkLoginStatus();
+                } else {
+                    alert('登录失败，请重试');
+                }
+            } catch (error) {
+                console.error('登录错误:', error);
+                alert('登录过程中发生错误: ' + error.message);
             }
         });
 
-        // 页面加载时检查登录状态
-        checkLoginStatus();
-
-        // 添加强制刷新按钮
-        document.addEventListener('DOMContentLoaded', () => {
-            const controlsContainer = document.querySelector('.page-controls');
-            if (controlsContainer) {
-                const refreshButton = document.createElement('button');
-                refreshButton.className = 'refresh-button';
-                refreshButton.textContent = '强制刷新推荐';
-                refreshButton.onclick = () => loadRecommendations(true);
-                controlsContainer.appendChild(refreshButton);
-            }
-        });
-
-        // 添加API状态检查函数
+        // API状态检查函数
         async function checkAPIStatus() {
             const statusContent = document.getElementById('api-status-content');
             statusContent.innerHTML = '正在检查...';
             
             try {
                 // 检查基本健康状态
-                const health = await fetchAPI('/health');
-                // 检查详细健康状态
-                const detailedHealth = await fetchAPI('/health/detailed');
+                const response = await fetch(`${CONFIG.current.apiBase}/api/health`);
+                const health = await response.json();
                 
                 statusContent.innerHTML = `
                     <p><strong>API状态:</strong> ${health.status}</p>
                     <p><strong>JWT密钥设置:</strong> ${health.env.hasJwtSecret ? '✅' : '❌'}</p>
                     <p><strong>GROQ密钥设置:</strong> ${health.env.hasGroqKey ? '✅' : '❌'}</p>
-                    <p><strong>KV状态:</strong> ${detailedHealth.kv}</p>
                     <p><strong>时间戳:</strong> ${health.timestamp}</p>
-                    <p><button onclick="testRecommendationAPI()">测试推荐API</button></p>
+                    <p><button id="test-recommendations-btn">测试推荐API</button></p>
                 `;
+                
+                document.getElementById('test-recommendations-btn')?.addEventListener('click', testRecommendationAPI);
             } catch (error) {
                 statusContent.innerHTML = `<p>检查失败: ${error.message}</p>`;
             }
         }
 
-        // 添加测试推荐API函数
+        // 测试推荐API函数
         async function testRecommendationAPI() {
             const statusContent = document.getElementById('api-status-content');
             statusContent.innerHTML += '<p>正在测试推荐API...</p>';
             
             try {
                 const startTime = Date.now();
-                // 使用nocache参数强制调用GROQ API
-                const recommendations = await fetchAPI('/recommendations?nocache=true');
+                // 使用时间戳参数避免缓存
+                const response = await fetch(`${CONFIG.current.apiBase}/api/recommendations?t=${Date.now()}`);
+                const recommendations = await response.json();
                 const endTime = Date.now();
                 
                 statusContent.innerHTML += `
                     <p>推荐API响应时间: ${endTime - startTime}ms</p>
                     <p>推荐数量: ${Array.isArray(recommendations) ? recommendations.length : '未知'}</p>
                     <p>内容样例: ${JSON.stringify(recommendations).substring(0, 100)}...</p>
-                    <p><button onclick="loadRecommendations(true)">刷新页面推荐</button></p>
+                    <p><button id="refresh-recommendations-btn">刷新页面推荐</button></p>
                 `;
+                
+                document.getElementById('refresh-recommendations-btn')?.addEventListener('click', loadRecommendations);
             } catch (error) {
                 statusContent.innerHTML += `<p>推荐API测试失败: ${error.message}</p>`;
             }
         }
+
+        // 绑定API状态检查按钮
+        document.getElementById('check-api-status-btn')?.addEventListener('click', checkAPIStatus);
+
+        // 页面加载时执行检查登录并加载推荐
+        window.addEventListener('DOMContentLoaded', () => {
+            loadRecommendations();
+        });
+
+        // 将CONFIG暴露到全局，以便在checkAPIStatus中使用
+        window.CONFIG = CONFIG;
     </script>
 </body>
 </html> 
