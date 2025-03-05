@@ -192,7 +192,7 @@ app.get('/api/clear-cache', async (c) => {
 });
 
 // 生成菜品图片
-async function generateDishImage(dishName) {
+async function generateDishImage(dishName, c) {
   console.log('开始生成菜品图片:', dishName);
   
   try {
@@ -206,6 +206,8 @@ async function generateDishImage(dishName) {
     const prompt = `一道美味的中国菜：${dishName}，高清实拍风格，餐盘摆盘精美，光线明亮，背景虚化，突出主体，食材新鲜，色彩诱人`;
     const negativePrompt = "模糊, 变形, 低质量, 像素化, 水印";
 
+    console.log('发送图片生成请求，提示词:', prompt);
+    
     const response = await fetch('https://api.siliconflow.cn/v1/images/generations', {
       method: 'POST',
       headers: {
@@ -224,14 +226,20 @@ async function generateDishImage(dishName) {
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`图片生成API返回错误: ${response.status}`, errorText);
       throw new Error(`图片生成失败: ${response.status}`);
     }
 
     const data = await response.json();
-    console.log('图片生成成功:', data);
+    console.log('图片生成成功，返回数据:', data);
     
-    // 返回生成的图片URL或Base64数据
-    return data.images[0];
+    if (!data.images || !data.images[0] || !data.images[0].url) {
+      console.error('API返回数据格式不正确:', data);
+      throw new Error('API返回的数据格式不正确');
+    }
+    
+    return data.images[0].url;  // 返回图片URL而不是base64数据
   } catch (error) {
     console.error('生成图片时发生错误:', error);
     return null;
@@ -319,9 +327,12 @@ app.get('/api/recommendations', async (c) => {
       
       // 为每个菜品生成图片
       for (let recipe of recommendations) {
-        const imageData = await generateDishImage(recipe.菜名);
-        if (imageData) {
-          recipe.图片 = imageData;
+        const imageUrl = await generateDishImage(recipe.菜名, c);
+        if (imageUrl) {
+          recipe.图片 = imageUrl;
+          console.log(`成功为 ${recipe.菜名} 生成图片URL:`, imageUrl);
+        } else {
+          console.log(`无法为 ${recipe.菜名} 生成图片，将使用默认图片`);
         }
       }
       
