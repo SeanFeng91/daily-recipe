@@ -193,142 +193,140 @@ app.get('/api/clear-cache', async (c) => {
 
 // 获取推荐 API
 app.get('/api/recommendations', async (c) => {
-  console.log('请求推荐API');
+  console.log('开始处理推荐请求');
   
+  const GROQ_API_KEY = c.env.GROQ_API_KEY;
+  if (!GROQ_API_KEY) {
+    console.error('GROQ API密钥未配置');
+    return c.json({ error: 'GROQ API密钥未配置，无法获取推荐' }, 500);
+  }
+
+  // 获取查询参数中的偏好
+  const preferences = c.req.query('preferences') || '';
+  console.log('接收到的偏好:', preferences);
+
   try {
-    // 获取当前日期作为缓存键
-    const today = new Date().toISOString().split('T')[0];
-    const cacheKey = `recommendations_${today}`;
+    console.log('准备调用GROQ API');
+    let prompt = `作为一个中餐菜谱推荐系统，请推荐2道今天适合做的菜。`;
     
-    // 检查是否需要跳过缓存
-    const skipCache = c.req.query('nocache') === 'true';
-    
-    if (!skipCache && c.env.RECIPES_KV) {
-      // 尝试从缓存获取推荐
-      const cachedRecommendations = await c.env.RECIPES_KV.get(cacheKey, 'json');
-      
-      if (cachedRecommendations) {
-        console.log(`从缓存获取到推荐: ${cacheKey}`);
-        return c.json(cachedRecommendations);
-      }
-    } else {
-      console.log('跳过缓存获取，直接请求GROQ');
+    // 添加用户偏好到提示词
+    if (preferences) {
+      prompt += ` 请考虑以下偏好: ${preferences}。`;
     }
     
-    // 准备调用GROQ API
-    const GROQ_API_KEY = c.env.GROQ_API_KEY;
+    prompt += ` 请提供详细的菜品信息，包括烹饪步骤和食材数量。请严格按照以下JSON数组格式返回：
+[
+  {
+    "菜名": "示例菜名1",
+    "简短描述": "示例描述1",
+    "所需时间": "30分钟",
+    "难度级别": "简单",
+    "主要食材": ["食材1", "食材2"],
+    "详细食材": [
+      {"名称": "食材1", "数量": "100克"},
+      {"名称": "食材2", "数量": "2勺"}
+    ],
+    "烹饪步骤": [
+      "第一步: 准备食材...",
+      "第二步: 开始烹饪...",
+      "第三步: 装盘即可"
+    ],
+    "小贴士": "烹饪时的注意事项或技巧"
+  },
+  {
+    "菜名": "示例菜名2",
+    "简短描述": "示例描述2",
+    "所需时间": "45分钟",
+    "难度级别": "中等",
+    "主要食材": ["食材1", "食材2"],
+    "详细食材": [
+      {"名称": "食材1", "数量": "200克"},
+      {"名称": "食材2", "数量": "3个"}
+    ],
+    "烹饪步骤": [
+      "第一步: 准备食材...",
+      "第二步: 开始烹饪...",
+      "第三步: 装盘即可"
+    ],
+    "小贴士": "烹饪时的注意事项或技巧"
+  }
+]`;
     
-    if (!GROQ_API_KEY) {
-      console.error('GROQ API密钥未设置，返回备用数据');
-      // 返回备用数据 - 如果没有GROQ API密钥
-      const defaultRecommendations = getDefaultRecommendations();
-      
-      // 缓存默认推荐（如果KV可用）
-      if (c.env.RECIPES_KV) {
-        await c.env.RECIPES_KV.put(cacheKey, JSON.stringify(defaultRecommendations), {
-          expirationTtl: 86400  // 24小时
-        });
-      }
-      
-      return c.json(defaultRecommendations);
-    }
-    
-    // 准备提示语
-    const prompt = `请根据季节和流行趋势，给我推荐3个今天可以做的美食菜谱。当前日期是 ${today}。
-    请用中文回答，并按以下JSON格式返回结果（不要有任何开头结尾的文字，只返回JSON数组）:
-    [
-      {
-        "菜名": "菜品名称",
-        "简短描述": "描述文本",
-        "所需时间": "30分钟",
-        "难度级别": "简单",
-        "主要食材": ["食材1", "食材2"]
-      }
-    ]`;
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'deepseek-r1-distill-llama-70b',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.7,
+        max_tokens: 10000
+      })
+    });
 
-    // 使用 try-catch 单独捕获 GROQ API 请求错误
+    console.log('GROQ API响应状态:', response.status);
+    const data = await response.json();
+    console.log('GROQ API响应数据:', JSON.stringify(data));
+
+    if (!response.ok) {
+      throw new Error(`GROQ API请求失败: ${response.status} ${JSON.stringify(data)}`);
+    }
+
+    if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
+      throw new Error('GROQ API返回的数据格式不正确');
+    }
+
+    let recommendations;
     try {
-      console.log('正在请求GROQ API...');
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${GROQ_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: "deepseek-r1-distill-llama-70b",
-          messages: [{
-            role: "user",
-            content: prompt
-          }],
-          temperature: 0.7,
-          max_tokens: 1000
-        })
+      recommendations = JSON.parse(data.choices[0].message.content);
+      console.log('解析后的推荐数据:', JSON.stringify(recommendations));
+      
+      // 验证数据格式
+      if (!Array.isArray(recommendations)) {
+        console.error('API返回的不是数组格式:', recommendations);
+        throw new Error('API响应格式错误: 预期数组，实际为 ' + typeof recommendations);
+      }
+      
+      // 验证每个推荐项的基本格式
+      recommendations.forEach((item, index) => {
+        if (!item.菜名 || !item.简短描述 || !item.所需时间 || !item.难度级别 || !Array.isArray(item.主要食材)) {
+          throw new Error(`第${index + 1}个推荐项格式不正确`);
+        }
+        
+        // 如果缺少详细信息，添加默认值
+        if (!Array.isArray(item.详细食材)) {
+          item.详细食材 = item.主要食材.map(材料 => ({ 名称: 材料, 数量: "适量" }));
+        }
+        
+        if (!Array.isArray(item.烹饪步骤)) {
+          item.烹饪步骤 = ["准备食材", "按照个人口味烹饪", "装盘即可"];
+        }
+        
+        if (!item.小贴士) {
+          item.小贴士 = "根据个人口味调整调料用量";
+        }
       });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`GROQ API请求失败: ${response.status} ${response.statusText}`, errorText);
-        throw new Error(`AI服务调用失败: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      console.log('GROQ API响应:', JSON.stringify(data).substring(0, 200) + '...');
       
-      if (!data.choices?.[0]?.message?.content) {
-        throw new Error('AI回复格式错误');
+      // 确保只返回两个推荐
+      if (recommendations.length > 2) {
+        recommendations = recommendations.slice(0, 2);
       }
       
-      // 解析AI生成的JSON
-      let aiContent = data.choices[0].message.content.trim();
-      
-      // 尝试修复常见的JSON格式问题
-      aiContent = aiContent.replace(/^```json/i, '').replace(/```$/i, '').trim();
-      
-      console.log('解析前的AI内容:', aiContent.substring(0, 200) + '...');
-      
-      // 解析AI返回的JSON
-      try {
-        const recommendations = JSON.parse(aiContent);
-        
-        // 验证数据格式
-        if (!Array.isArray(recommendations)) {
-          throw new Error('AI返回的不是有效的数组格式');
-        }
-        
-        // 验证每个推荐的结构
-        recommendations.forEach((item, index) => {
-          if (!item.菜名 || !item.简短描述 || !item.所需时间 || !item.难度级别 || !Array.isArray(item.主要食材)) {
-            console.warn(`推荐项 #${index+1} 缺少必要字段:`, item);
-          }
-        });
-        
-        console.log(`成功解析了 ${recommendations.length} 个AI生成的推荐`);
-        
-        // 缓存生成的推荐（如果KV可用）
-        if (c.env.RECIPES_KV) {
-          await c.env.RECIPES_KV.put(cacheKey, JSON.stringify(recommendations), {
-            expirationTtl: 86400  // 24小时
-          });
-        }
-        
-        return c.json(recommendations);
-      } catch (parseError) {
-        console.error('解析AI生成的JSON失败:', parseError, 'AI返回的内容:', aiContent);
-        throw new Error(`解析AI生成内容失败: ${parseError.message}`);
-      }
-    } catch (groqError) {
-      console.error('GROQ API调用失败:', groqError);
-      
-      // 返回备用数据作为后备
-      console.warn('使用备用数据作为后备');
-      const fallbackRecommendations = getDefaultRecommendations();
-      
-      return c.json(fallbackRecommendations);
+    } catch (e) {
+      console.error('数据格式验证失败:', e);
+      throw new Error(`数据格式验证失败: ${e.message}`);
     }
+
+    // 保存到KV存储
+    const today = new Date().toISOString().split('T')[0];
+    await c.env.RECIPES_KV.put(`recommendations:${today}`, JSON.stringify(recommendations));
+
+    return c.json(recommendations);
   } catch (error) {
-    console.error('推荐API错误:', error);
-    return c.json({ error: error.message }, 500);
+    console.error('获取推荐时发生错误:', error);
+    return c.json({ error: `获取推荐失败: ${error.message}` }, 500);
   }
 });
 
@@ -465,68 +463,11 @@ app.get('/api/history', async (c) => {
     // 从KV中获取指定日期的推荐
     const recommendations = await c.env.RECIPES_KV.get(`recommendations:${date}`);
     
-    // 如果没有找到该日期的数据，生成一些默认数据
+    // 如果没有找到该日期的数据，返回空数组
     if (!recommendations) {
-      // 根据日期生成一些伪随机数据
-      const dayNumber = new Date(date).getDate() % 3; // 0, 1 或 2
-      
-      const defaultRecipes = [
-        [
-          {
-            "菜名": "糖醋里脊",
-            "简短描述": "外酥里嫩，酸甜可口的经典菜肴。",
-            "所需时间": "45分钟",
-            "难度级别": "中等",
-            "主要食材": ["里脊肉", "醋", "糖", "番茄酱"]
-          },
-          {
-            "菜名": "蒜蓉西兰花",
-            "简短描述": "健康营养，口感爽脆的快手菜。",
-            "所需时间": "15分钟",
-            "难度级别": "简单",
-            "主要食材": ["西兰花", "大蒜", "盐", "食用油"]
-          }
-        ],
-        [
-          {
-            "菜名": "麻婆豆腐",
-            "简短描述": "经典川菜，麻辣鲜香，下饭神器。",
-            "所需时间": "30分钟",
-            "难度级别": "简单",
-            "主要食材": ["豆腐", "肉末", "豆瓣酱", "花椒粉"]
-          },
-          {
-            "菜名": "蛋炒饭",
-            "简短描述": "简单易做的家常菜，香气扑鼻。",
-            "所需时间": "20分钟",
-            "难度级别": "简单",
-            "主要食材": ["米饭", "鸡蛋", "葱", "胡萝卜"]
-          }
-        ],
-        [
-          {
-            "菜名": "水煮肉片",
-            "简短描述": "麻辣鲜香的川菜经典，肉质鲜嫩。",
-            "所需时间": "40分钟",
-            "难度级别": "中等",
-            "主要食材": ["肉片", "辣椒", "豆芽", "蒜苗"]
-          },
-          {
-            "菜名": "鱼香茄子",
-            "简短描述": "色香味俱全，口感丰富的传统菜品。",
-            "所需时间": "35分钟",
-            "难度级别": "中等",
-            "主要食材": ["茄子", "肉末", "葱姜蒜", "豆瓣酱"]
-          }
-        ]
-      ];
-      
-      // 将默认数据存入KV，下次可直接使用
-      await c.env.RECIPES_KV.put(`recommendations:${date}`, JSON.stringify(defaultRecipes[dayNumber]));
-      
       return c.json({
         date,
-        recipes: defaultRecipes[dayNumber]
+        recipes: []
       });
     }
 
@@ -691,130 +632,5 @@ app.post('/api/test-groq', async (c) => {
     }, { status: 500 });
   }
 });
-
-// 获取默认推荐数据
-function getDefaultRecommendations() {
-  // 根据当前日期生成一些变化，避免每天返回完全相同的数据
-  const day = new Date().getDay(); // 0-6
-  
-  // 不同的默认推荐集
-  const recommendationSets = [
-    [
-      {
-        "菜名": "宫保鸡丁",
-        "简短描述": "经典川菜，具有麻辣鲜香的口味，鸡肉和干辣椒的组合让人难以抗拒。",
-        "所需时间": "20分钟",
-        "难度级别": "简单",
-        "主要食材": ["鸡胸肉", "花生", "干辣椒", "葱姜蒜"]
-      },
-      {
-        "菜名": "鱼香肉丝",
-        "简短描述": "一道色香味俱全的川菜，酸甜可口，下饭一流。",
-        "所需时间": "30分钟",
-        "难度级别": "中等",
-        "主要食材": ["猪肉", "木耳", "胡萝卜", "泡椒"]
-      }
-    ],
-    [
-      {
-        "菜名": "糖醋里脊",
-        "简短描述": "外酥里嫩，酸甜可口的经典菜肴。",
-        "所需时间": "45分钟",
-        "难度级别": "中等",
-        "主要食材": ["里脊肉", "醋", "糖", "番茄酱"]
-      },
-      {
-        "菜名": "蒜蓉西兰花",
-        "简短描述": "健康营养，口感爽脆的快手菜。",
-        "所需时间": "15分钟",
-        "难度级别": "简单",
-        "主要食材": ["西兰花", "大蒜", "盐", "食用油"]
-      }
-    ],
-    [
-      {
-        "菜名": "麻婆豆腐",
-        "简短描述": "经典川菜，麻辣鲜香，下饭神器。",
-        "所需时间": "30分钟",
-        "难度级别": "简单",
-        "主要食材": ["豆腐", "肉末", "豆瓣酱", "花椒粉"]
-      },
-      {
-        "菜名": "蛋炒饭",
-        "简短描述": "简单易做的家常菜，香气扑鼻。",
-        "所需时间": "20分钟",
-        "难度级别": "简单",
-        "主要食材": ["米饭", "鸡蛋", "葱", "胡萝卜"]
-      }
-    ],
-    [
-      {
-        "菜名": "水煮肉片",
-        "简短描述": "麻辣鲜香的川菜经典，肉质鲜嫩。",
-        "所需时间": "40分钟",
-        "难度级别": "中等",
-        "主要食材": ["肉片", "辣椒", "豆芽", "蒜苗"]
-      },
-      {
-        "菜名": "红烧茄子",
-        "简短描述": "汁浓味香，茄子软糯可口。",
-        "所需时间": "35分钟",
-        "难度级别": "简单",
-        "主要食材": ["茄子", "酱油", "蒜", "姜"]
-      }
-    ],
-    [
-      {
-        "菜名": "清蒸鱼",
-        "简短描述": "保留鱼的鲜美，清淡爽口的经典做法。",
-        "所需时间": "30分钟",
-        "难度级别": "中等",
-        "主要食材": ["鲜鱼", "姜", "葱", "蒸鱼豉油"]
-      },
-      {
-        "菜名": "番茄炒蛋",
-        "简短描述": "酸甜可口的家常菜，色彩鲜艳。",
-        "所需时间": "15分钟",
-        "难度级别": "简单",
-        "主要食材": ["番茄", "鸡蛋", "糖", "葱花"]
-      }
-    ],
-    [
-      {
-        "菜名": "青椒肉丝",
-        "简短描述": "经典快炒，青椒爽脆，肉丝鲜嫩。",
-        "所需时间": "20分钟",
-        "难度级别": "简单",
-        "主要食材": ["猪肉", "青椒", "蒜", "姜"]
-      },
-      {
-        "菜名": "酸辣汤",
-        "简短描述": "开胃爽口，酸辣可口的汤品。",
-        "所需时间": "25分钟",
-        "难度级别": "简单",
-        "主要食材": ["豆腐", "木耳", "鸡蛋", "醋"]
-      }
-    ],
-    [
-      {
-        "菜名": "干煸四季豆",
-        "简短描述": "脆嫩可口，香辣入味的下饭菜。",
-        "所需时间": "25分钟",
-        "难度级别": "简单",
-        "主要食材": ["四季豆", "肉末", "干辣椒", "花椒"]
-      },
-      {
-        "菜名": "香菇油菜",
-        "简短描述": "清新爽口，香菇鲜美的素食选择。",
-        "所需时间": "15分钟",
-        "难度级别": "简单",
-        "主要食材": ["香菇", "油菜", "蒜", "盐"]
-      }
-    ]
-  ];
-  
-  // 根据星期几选择推荐集
-  return recommendationSets[day];
-}
 
 export default app; 

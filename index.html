@@ -70,6 +70,100 @@
             margin-bottom: 0.5rem;
         }
 
+        .preferences-section {
+            background: #fff;
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .preferences-section h2 {
+            margin-bottom: 1rem;
+            color: #2c3e50;
+            font-size: 1.5rem;
+        }
+
+        .preferences-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .preferences-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .preference-tag {
+            background: #e9ecef;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .preference-tag:hover {
+            background: #dee2e6;
+        }
+
+        .preference-tag.active {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .preferences-input {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .input-field {
+            flex: 1;
+            padding: 0.75rem;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+
+        .submit-button {
+            background-color: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+
+        .submit-button:hover {
+            background-color: #ff5252;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            font-size: 1.2rem;
+            color: #666;
+        }
+
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #ff6b6b;
+            animation: spin 1s ease infinite;
+            margin: 1rem auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
         .recipes-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -104,6 +198,12 @@
             color: #2c3e50;
         }
 
+        .recipe-description {
+            color: #666;
+            margin-bottom: 1rem;
+            line-height: 1.5;
+        }
+
         .recipe-info {
             display: flex;
             justify-content: space-between;
@@ -136,6 +236,167 @@
         .action-button:hover {
             background-color: #ff5252;
         }
+
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .tag {
+            background: #f1f3f5;
+            padding: 0.3rem 0.6rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: #495057;
+        }
+
+        /* 详情模态框 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 200;
+            padding: 1rem;
+            overflow-y: auto;
+        }
+
+        .modal-content {
+            background: white;
+            max-width: 900px;
+            margin: 2rem auto;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            position: relative;
+            overflow: hidden;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            background: #ff6b6b;
+            color: white;
+            padding: 1.5rem;
+            position: sticky;
+            top: 0;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .modal-body {
+            padding: 2rem;
+        }
+
+        .close-button {
+            position: absolute;
+            right: 1.5rem;
+            top: 1.5rem;
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .recipe-sections {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .recipe-sections {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .ingredients {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 10px;
+        }
+
+        .ingredients h3 {
+            margin-bottom: 1rem;
+            color: #2c3e50;
+        }
+
+        .ingredient-list {
+            list-style: none;
+        }
+
+        .ingredient-list li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .steps {
+            padding: 1rem 0;
+        }
+
+        .steps h3 {
+            margin-bottom: 1rem;
+            color: #2c3e50;
+        }
+
+        .step-list {
+            list-style: none;
+            counter-reset: step-counter;
+        }
+
+        .step-list li {
+            margin-bottom: 1.5rem;
+            padding-left: 3rem;
+            position: relative;
+        }
+
+        .step-list li::before {
+            content: counter(step-counter);
+            counter-increment: step-counter;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 2rem;
+            height: 2rem;
+            background: #ff6b6b;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .tips {
+            background: #fff3cd;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin-top: 2rem;
+            border-left: 4px solid #ffc107;
+        }
+
+        .tips h3 {
+            color: #856404;
+            margin-bottom: 0.5rem;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -145,10 +406,10 @@
                 <i class="fas fa-utensils"></i> 每日食谱
             </div>
             <div class="nav-links">
-                <a href="#"><i class="fas fa-home"></i> 首页</a>
-                <a href="#"><i class="fas fa-calendar-alt"></i> 历史记录</a>
-                <a href="#"><i class="fas fa-camera"></i> 我的作品</a>
-                <a href="#"><i class="fas fa-user"></i> 个人中心</a>
+                <a href="/"><i class="fas fa-home"></i> 首页</a>
+                <a href="/history.html"><i class="fas fa-calendar-alt"></i> 历史记录</a>
+                <a href="/gallery.html"><i class="fas fa-camera"></i> 我的作品</a>
+                <a href="/profile.html"><i class="fas fa-user"></i> 个人中心</a>
             </div>
         </div>
     </nav>
@@ -159,66 +420,248 @@
             <p id="current-date">2024年3月21日</p>
         </div>
 
-        <div class="recipes-grid">
-            <!-- 菜品1 -->
-            <div class="recipe-card">
-                <img src="https://images.unsplash.com/photo-1547592180-85f173990554" alt="红烧排骨" class="recipe-image">
-                <div class="recipe-content">
-                    <h2 class="recipe-title">红烧排骨</h2>
-                    <p>经典美味的红烧排骨，口感酥软，营养丰富</p>
-                    <div class="recipe-info">
-                        <div class="recipe-stats">
-                            <span class="stat"><i class="fas fa-clock"></i> 40分钟</span>
-                            <span class="stat"><i class="fas fa-fire"></i> 中等难度</span>
-                        </div>
-                        <button class="action-button">查看详情</button>
-                    </div>
+        <div class="preferences-section">
+            <h2><i class="fas fa-sliders-h"></i> 偏好设置</h2>
+            <div class="preferences-form">
+                <div class="preferences-tags">
+                    <div class="preference-tag" data-value="家常菜">家常菜</div>
+                    <div class="preference-tag" data-value="川菜">川菜</div>
+                    <div class="preference-tag" data-value="粤菜">粤菜</div>
+                    <div class="preference-tag" data-value="清淡">清淡</div>
+                    <div class="preference-tag" data-value="麻辣">麻辣</div>
+                    <div class="preference-tag" data-value="快手菜">快手菜</div>
+                    <div class="preference-tag" data-value="海鲜">海鲜</div>
+                    <div class="preference-tag" data-value="素食">素食</div>
+                    <div class="preference-tag" data-value="肉类">肉类</div>
                 </div>
-            </div>
-
-            <!-- 菜品2 -->
-            <div class="recipe-card">
-                <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c" alt="时蔬沙拉" class="recipe-image">
-                <div class="recipe-content">
-                    <h2 class="recipe-title">时蔬沙拉</h2>
-                    <p>新鲜蔬菜搭配特制酱料，健康美味</p>
-                    <div class="recipe-info">
-                        <div class="recipe-stats">
-                            <span class="stat"><i class="fas fa-clock"></i> 15分钟</span>
-                            <span class="stat"><i class="fas fa-fire"></i> 简单</span>
-                        </div>
-                        <button class="action-button">查看详情</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 菜品3 -->
-            <div class="recipe-card">
-                <img src="https://images.unsplash.com/photo-1512058556646-c4da40fba323" alt="清蒸鲈鱼" class="recipe-image">
-                <div class="recipe-content">
-                    <h2 class="recipe-title">清蒸鲈鱼</h2>
-                    <p>鲜美可口的清蒸鲈鱼，营养美味</p>
-                    <div class="recipe-info">
-                        <div class="recipe-stats">
-                            <span class="stat"><i class="fas fa-clock"></i> 25分钟</span>
-                            <span class="stat"><i class="fas fa-fire"></i> 中等难度</span>
-                        </div>
-                        <button class="action-button">查看详情</button>
-                    </div>
+                <div class="preferences-input">
+                    <input type="text" class="input-field" id="preference-input" placeholder="输入其他偏好，例如：不辣、适合儿童、低脂、适合2人份...">
+                    <button class="submit-button" id="refresh-button">获取推荐</button>
                 </div>
             </div>
         </div>
+
+        <div id="loading" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>正在为您生成美食推荐，请稍候...</p>
+        </div>
+
+        <div id="error-container"></div>
+
+        <div id="recipes-container" class="recipes-grid">
+            <!-- 动态生成的菜品卡片将在这里显示 -->
+        </div>
     </main>
+
+    <!-- 详情模态框 -->
+    <div class="modal" id="recipe-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">菜品详情</h2>
+                <button class="close-button">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                <!-- 动态生成的详情内容将在这里显示 -->
+            </div>
+        </div>
+    </div>
 
     <script>
         // 设置当前日期
         const dateElement = document.getElementById('current-date');
         const now = new Date();
         dateElement.textContent = now.toLocaleDateString('zh-CN', {
-            year: 'numeric',
+            year: 'numeric', 
             month: 'long',
             day: 'numeric'
         });
+
+        // 获取DOM元素
+        const prefTags = document.querySelectorAll('.preference-tag');
+        const prefInput = document.getElementById('preference-input');
+        const refreshButton = document.getElementById('refresh-button');
+        const loadingEl = document.getElementById('loading');
+        const recipesContainer = document.getElementById('recipes-container');
+        const errorContainer = document.getElementById('error-container');
+        const modal = document.getElementById('recipe-modal');
+        const modalBody = document.getElementById('modal-body');
+        const closeButton = document.querySelector('.close-button');
+
+        // 偏好标签点击事件
+        prefTags.forEach(tag => {
+            tag.addEventListener('click', () => {
+                tag.classList.toggle('active');
+            });
+        });
+
+        // 关闭模态框
+        closeButton.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+
+        // 点击模态框外部关闭
+        window.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+
+        // 获取选中的偏好
+        function getSelectedPreferences() {
+            const activeTags = document.querySelectorAll('.preference-tag.active');
+            const tagValues = Array.from(activeTags).map(tag => tag.dataset.value);
+            
+            const inputValue = prefInput.value.trim();
+            if (inputValue) {
+                tagValues.push(inputValue);
+            }
+            
+            return tagValues.join('、');
+        }
+
+        // 获取推荐
+        async function fetchRecommendations() {
+            const preferences = getSelectedPreferences();
+            
+            // 显示加载状态
+            loadingEl.style.display = 'block';
+            recipesContainer.innerHTML = '';
+            errorContainer.innerHTML = '';
+            
+            try {
+                const url = preferences 
+                    ? `/api/recommendations?preferences=${encodeURIComponent(preferences)}`
+                    : '/api/recommendations';
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    displayRecipes(data);
+                } else {
+                    throw new Error(data.error || '获取推荐失败');
+                }
+            } catch (error) {
+                console.error('加载推荐失败:', error);
+                errorContainer.innerHTML = `
+                    <div class="error-message">
+                        <i class="fas fa-exclamation-circle"></i> 
+                        ${error.message || '加载推荐失败，请稍后再试'}
+                    </div>
+                `;
+            } finally {
+                loadingEl.style.display = 'none';
+            }
+        }
+
+        // 显示菜品卡片
+        function displayRecipes(recipes) {
+            if (!Array.isArray(recipes) || recipes.length === 0) {
+                errorContainer.innerHTML = `
+                    <div class="error-message">
+                        <i class="fas fa-exclamation-circle"></i> 
+                        没有找到符合条件的推荐
+                    </div>
+                `;
+                return;
+            }
+            
+            recipesContainer.innerHTML = '';
+            
+            recipes.forEach((recipe, index) => {
+                const card = document.createElement('div');
+                card.className = 'recipe-card';
+                
+                // 使用随机图片
+                const imageId = Math.floor(Math.random() * 1000);
+                const imageUrl = `https://source.unsplash.com/featured/300x200?food,chinese,cooking&sig=${imageId}`;
+                
+                card.innerHTML = `
+                    <img src="${imageUrl}" alt="${recipe.菜名}" class="recipe-image">
+                    <div class="recipe-content">
+                        <h2 class="recipe-title">${recipe.菜名}</h2>
+                        <p class="recipe-description">${recipe.简短描述}</p>
+                        <div class="tags">
+                            ${recipe.主要食材.map(item => `<span class="tag">${item}</span>`).join('')}
+                        </div>
+                        <div class="recipe-info">
+                            <div class="recipe-stats">
+                                <span class="stat"><i class="fas fa-clock"></i> ${recipe.所需时间}</span>
+                                <span class="stat"><i class="fas fa-fire"></i> ${recipe.难度级别}</span>
+                            </div>
+                            <button class="action-button view-details" data-index="${index}">查看详情</button>
+                        </div>
+                    </div>
+                `;
+                
+                recipesContainer.appendChild(card);
+            });
+            
+            // 添加查看详情事件
+            document.querySelectorAll('.view-details').forEach(button => {
+                button.addEventListener('click', () => {
+                    const index = button.dataset.index;
+                    showRecipeDetails(recipes[index]);
+                });
+            });
+        }
+
+        // 显示菜品详情
+        function showRecipeDetails(recipe) {
+            // 使用随机图片
+            const imageId = Math.floor(Math.random() * 1000);
+            const imageUrl = `https://source.unsplash.com/featured/800x400?food,chinese,cooking&sig=${imageId}`;
+            
+            modalBody.innerHTML = `
+                <img src="${imageUrl}" alt="${recipe.菜名}" style="width: 100%; height: 300px; object-fit: cover; border-radius: 10px; margin-bottom: 1.5rem;">
+                
+                <h3 style="font-size: 1.8rem; margin-bottom: 0.5rem;">${recipe.菜名}</h3>
+                <p style="color: #666; margin-bottom: 1.5rem;">${recipe.简短描述}</p>
+                
+                <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+                    <span style="background: #e9ecef; padding: 0.5rem 1rem; border-radius: 20px;">
+                        <i class="fas fa-clock"></i> ${recipe.所需时间}
+                    </span>
+                    <span style="background: #e9ecef; padding: 0.5rem 1rem; border-radius: 20px;">
+                        <i class="fas fa-fire"></i> ${recipe.难度级别}
+                    </span>
+                </div>
+                
+                <div class="recipe-sections">
+                    <div class="ingredients">
+                        <h3><i class="fas fa-list"></i> 食材清单</h3>
+                        <ul class="ingredient-list">
+                            ${recipe.详细食材.map(item => `
+                                <li>
+                                    <span>${item.名称}</span>
+                                    <span>${item.数量}</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                    
+                    <div class="steps">
+                        <h3><i class="fas fa-tasks"></i> 烹饪步骤</h3>
+                        <ol class="step-list">
+                            ${recipe.烹饪步骤.map(step => `<li>${step}</li>`).join('')}
+                        </ol>
+                    </div>
+                </div>
+                
+                <div class="tips">
+                    <h3><i class="fas fa-lightbulb"></i> 小贴士</h3>
+                    <p>${recipe.小贴士}</p>
+                </div>
+            `;
+            
+            modal.style.display = 'block';
+        }
+
+        // 点击刷新按钮获取推荐
+        refreshButton.addEventListener('click', fetchRecommendations);
+        
+        // 页面加载时获取推荐
+        document.addEventListener('DOMContentLoaded', fetchRecommendations);
     </script>
 </body>
 </html>
