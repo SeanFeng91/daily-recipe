@@ -190,13 +190,12 @@
                 // 显示推荐
                 let html = '';
                 recommendations.forEach((recipe, index) => {
-                    // 使用随机图片
-                    const imageId = Math.floor(Math.random() * 1000);
-                    const imageUrl = `https://source.unsplash.com/featured/300x200?food,chinese,cooking&sig=${imageId}`;
+                    // 使用生成的图片或默认图片
+                    const imageUrl = recipe.图片 || `https://source.unsplash.com/featured/300x200?food,chinese,cooking&sig=${Math.floor(Math.random() * 1000)}`;
                     
                     html += `
                         <div class="recipe-card">
-                            <img src="${imageUrl}" alt="${recipe.菜名}" class="recipe-image">
+                            <img src="${imageUrl}" alt="${recipe.菜名}" class="recipe-image" onerror="this.src='https://source.unsplash.com/featured/300x200?food,chinese,cooking'">
                             <div class="recipe-content">
                                 <h2 class="recipe-title">${recipe.菜名}</h2>
                                 <p class="recipe-description">${recipe.简短描述}</p>
@@ -342,12 +341,11 @@
             const modal = document.getElementById('recipe-modal');
             const modalBody = document.getElementById('modal-body');
             
-            // 使用随机图片
-            const imageId = Math.floor(Math.random() * 1000);
-            const imageUrl = `https://source.unsplash.com/featured/800x400?food,chinese,cooking&sig=${imageId}`;
+            // 使用生成的图片或默认图片
+            const imageUrl = recipe.图片 || `https://source.unsplash.com/featured/800x400?food,chinese,cooking&sig=${Math.floor(Math.random() * 1000)}`;
             
             modalBody.innerHTML = `
-                <img src="${imageUrl}" alt="${recipe.菜名}" style="width: 100%; height: 300px; object-fit: cover; border-radius: 10px; margin-bottom: 1.5rem;">
+                <img src="${imageUrl}" alt="${recipe.菜名}" style="width: 100%; height: 300px; object-fit: cover; border-radius: 10px; margin-bottom: 1.5rem;" onerror="this.src='https://source.unsplash.com/featured/800x400?food,chinese,cooking'">
                 
                 <h3 style="font-size: 1.8rem; margin-bottom: 0.5rem;">${recipe.菜名}</h3>
                 <p style="color: #666; margin-bottom: 1.5rem;">${recipe.简短描述}</p>

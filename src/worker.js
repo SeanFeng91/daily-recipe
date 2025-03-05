@@ -191,6 +191,53 @@ app.get('/api/clear-cache', async (c) => {
   }
 });
 
+// 生成菜品图片
+async function generateDishImage(dishName) {
+  console.log('开始生成菜品图片:', dishName);
+  
+  try {
+    const SILICONFLOW_API_KEY = c.env.SILICONFLOW_API_KEY;
+    if (!SILICONFLOW_API_KEY) {
+      console.error('未配置硅基流动API密钥');
+      return null;
+    }
+
+    // 构建提示词
+    const prompt = `一道美味的中国菜：${dishName}，高清实拍风格，餐盘摆盘精美，光线明亮，背景虚化，突出主体，食材新鲜，色彩诱人`;
+    const negativePrompt = "模糊, 变形, 低质量, 像素化, 水印";
+
+    const response = await fetch('https://api.siliconflow.cn/v1/images/generations', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SILICONFLOW_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: "Kwai-Kolors/Kolors",
+        prompt: prompt,
+        negative_prompt: negativePrompt,
+        image_size: "1024x1024",
+        batch_size: 1,
+        num_inference_steps: 20,
+        guidance_scale: 7.5
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`图片生成失败: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('图片生成成功:', data);
+    
+    // 返回生成的图片URL或Base64数据
+    return data.images[0];
+  } catch (error) {
+    console.error('生成图片时发生错误:', error);
+    return null;
+  }
+}
+
 // 获取推荐 API
 app.get('/api/recommendations', async (c) => {
   console.log('开始处理推荐请求');
@@ -209,7 +256,6 @@ app.get('/api/recommendations', async (c) => {
     console.log('准备调用GROQ API');
     let prompt = `作为一个中餐菜谱推荐系统，请推荐2道今天适合做的菜。`;
     
-    // 添加用户偏好到提示词
     if (preferences) {
       prompt += ` 请考虑以下偏好: ${preferences}。`;
     }
@@ -225,23 +271,6 @@ app.get('/api/recommendations', async (c) => {
     "详细食材": [
       {"名称": "食材1", "数量": "100克"},
       {"名称": "食材2", "数量": "2勺"}
-    ],
-    "烹饪步骤": [
-      "第一步: 准备食材...",
-      "第二步: 开始烹饪...",
-      "第三步: 装盘即可"
-    ],
-    "小贴士": "烹饪时的注意事项或技巧"
-  },
-  {
-    "菜名": "示例菜名2",
-    "简短描述": "示例描述2",
-    "所需时间": "45分钟",
-    "难度级别": "中等",
-    "主要食材": ["食材1", "食材2"],
-    "详细食材": [
-      {"名称": "食材1", "数量": "200克"},
-      {"名称": "食材2", "数量": "3个"}
     ],
     "烹饪步骤": [
       "第一步: 准备食材...",
@@ -285,8 +314,15 @@ app.get('/api/recommendations', async (c) => {
       
       // 验证数据格式
       if (!Array.isArray(recommendations)) {
-        console.error('API返回的不是数组格式:', recommendations);
-        throw new Error('API响应格式错误: 预期数组，实际为 ' + typeof recommendations);
+        throw new Error('API响应格式错误: 预期数组');
+      }
+      
+      // 为每个菜品生成图片
+      for (let recipe of recommendations) {
+        const imageData = await generateDishImage(recipe.菜名);
+        if (imageData) {
+          recipe.图片 = imageData;
+        }
       }
       
       // 验证每个推荐项的基本格式
