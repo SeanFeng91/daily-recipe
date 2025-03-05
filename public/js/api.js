@@ -87,8 +87,8 @@ export async function login() {
 }
 
 // 获取每日推荐
-export async function getDailyRecommendations(forceRefresh = false) {
-  console.log('获取每日推荐，强制刷新:', forceRefresh);
+export async function getDailyRecommendations(forceRefresh = false, preferences = '') {
+  console.log('获取每日推荐，强制刷新:', forceRefresh, '偏好:', preferences);
   
   try {
     // 添加时间戳和强制刷新参数
@@ -98,6 +98,12 @@ export async function getDailyRecommendations(forceRefresh = false) {
     if (forceRefresh) {
       queryParams.append('nocache', 'true');
       console.log('添加nocache参数以强制刷新');
+    }
+    
+    // 添加偏好参数
+    if (preferences) {
+      queryParams.append('preferences', preferences);
+      console.log('添加偏好参数:', preferences);
     }
     
     const endpoint = `/recommendations?${queryParams.toString()}`;

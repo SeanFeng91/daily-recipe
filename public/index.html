@@ -33,6 +33,27 @@
             <button id="loginBtn" class="btn" style="display: none;"><i class="fas fa-sign-in-alt"></i> 登录</button>
         </div>
 
+        <div class="preferences-section">
+            <h2><i class="fas fa-sliders-h"></i> 偏好设置</h2>
+            <div class="preferences-form">
+                <div class="preferences-tags">
+                    <div class="preference-tag" data-value="家常菜">家常菜</div>
+                    <div class="preference-tag" data-value="川菜">川菜</div>
+                    <div class="preference-tag" data-value="粤菜">粤菜</div>
+                    <div class="preference-tag" data-value="清淡">清淡</div>
+                    <div class="preference-tag" data-value="麻辣">麻辣</div>
+                    <div class="preference-tag" data-value="快手菜">快手菜</div>
+                    <div class="preference-tag" data-value="海鲜">海鲜</div>
+                    <div class="preference-tag" data-value="素食">素食</div>
+                    <div class="preference-tag" data-value="肉类">肉类</div>
+                </div>
+                <div class="preferences-input">
+                    <input type="text" class="input-field" id="preference-input" placeholder="输入其他偏好，例如：不辣、适合儿童、低脂、适合2人份...">
+                    <button class="submit-button" id="refresh-button">获取推荐</button>
+                </div>
+            </div>
+        </div>
+
         <div class="recipes-grid" id="recipes-container">
             <div class="loading" id="loading-indicator">
                 <i class="fas fa-spinner fa-spin"></i> 正在加载推荐菜品...
@@ -51,6 +72,19 @@
             <button id="force-refresh-btn" style="margin-left: 10px; background-color: #ffcc00;">强制刷新推荐</button>
         </div>
     </main>
+
+    <!-- 详情模态框 -->
+    <div class="modal" id="recipe-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">菜品详情</h2>
+                <button class="close-button">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                <!-- 动态生成的详情内容将在这里显示 -->
+            </div>
+        </div>
+    </div>
 
     <script type="module">
         import { getDailyRecommendations, login, diagnoseAPI, CONFIG, clearCache } from '/js/api.js';
@@ -91,7 +125,7 @@
         });
 
         // 加载推荐菜品
-        async function loadRecommendations(forceRefresh = false) {
+        async function loadRecommendations(forceRefresh = false, preferences = '') {
             // 获取或创建加载指示器
             let loadingIndicator = document.getElementById('loading-indicator');
             const recipesContainer = document.getElementById('recipes-container');
@@ -139,7 +173,7 @@
                 
                 // 带上时间戳和强制刷新参数
                 const timestamp = Date.now();
-                const recommendations = await getDailyRecommendations(forceRefresh);
+                const recommendations = await getDailyRecommendations(forceRefresh, preferences);
                 console.log('获取到的推荐:', recommendations);
                 
                 // 检查推荐是否为数组
@@ -155,23 +189,41 @@
                 
                 // 显示推荐
                 let html = '';
-                recommendations.forEach(recipe => {
+                recommendations.forEach((recipe, index) => {
+                    // 使用随机图片
+                    const imageId = Math.floor(Math.random() * 1000);
+                    const imageUrl = `https://source.unsplash.com/featured/300x200?food,chinese,cooking&sig=${imageId}`;
+                    
                     html += `
                         <div class="recipe-card">
-                            <h3>${recipe.菜名}</h3>
-                            <p>${recipe.简短描述}</p>
-                            <div class="recipe-details">
-                                <span>🕒 ${recipe.所需时间}</span>
-                                <span>📊 ${recipe.难度级别}</span>
-                            </div>
-                            <div class="recipe-ingredients">
-                                <strong>主要食材:</strong> ${recipe.主要食材.join(', ')}
+                            <img src="${imageUrl}" alt="${recipe.菜名}" class="recipe-image">
+                            <div class="recipe-content">
+                                <h2 class="recipe-title">${recipe.菜名}</h2>
+                                <p class="recipe-description">${recipe.简短描述}</p>
+                                <div class="tags">
+                                    ${recipe.主要食材.map(item => `<span class="tag">${item}</span>`).join('')}
+                                </div>
+                                <div class="recipe-info">
+                                    <div class="recipe-stats">
+                                        <span class="stat"><i class="fas fa-clock"></i> ${recipe.所需时间}</span>
+                                        <span class="stat"><i class="fas fa-fire"></i> ${recipe.难度级别}</span>
+                                    </div>
+                                    <button class="action-button view-details" data-index="${index}">查看详情</button>
+                                </div>
                             </div>
                         </div>
                     `;
                 });
                 
                 recipesContainer.innerHTML = html;
+
+                // 添加查看详情事件
+                document.querySelectorAll('.view-details').forEach(button => {
+                    button.addEventListener('click', () => {
+                        const index = button.dataset.index;
+                        showRecipeDetails(recommendations[index]);
+                    });
+                });
             } catch (error) {
                 console.error('加载推荐失败:', error);
                 if (recipesContainer) {
@@ -284,6 +336,99 @@
 
         // 将CONFIG暴露到全局，以便在其他地方使用
         window.CONFIG = CONFIG;
+
+        // 添加显示菜品详情的函数
+        function showRecipeDetails(recipe) {
+            const modal = document.getElementById('recipe-modal');
+            const modalBody = document.getElementById('modal-body');
+            
+            // 使用随机图片
+            const imageId = Math.floor(Math.random() * 1000);
+            const imageUrl = `https://source.unsplash.com/featured/800x400?food,chinese,cooking&sig=${imageId}`;
+            
+            modalBody.innerHTML = `
+                <img src="${imageUrl}" alt="${recipe.菜名}" style="width: 100%; height: 300px; object-fit: cover; border-radius: 10px; margin-bottom: 1.5rem;">
+                
+                <h3 style="font-size: 1.8rem; margin-bottom: 0.5rem;">${recipe.菜名}</h3>
+                <p style="color: #666; margin-bottom: 1.5rem;">${recipe.简短描述}</p>
+                
+                <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+                    <span style="background: #e9ecef; padding: 0.5rem 1rem; border-radius: 20px;">
+                        <i class="fas fa-clock"></i> ${recipe.所需时间}
+                    </span>
+                    <span style="background: #e9ecef; padding: 0.5rem 1rem; border-radius: 20px;">
+                        <i class="fas fa-fire"></i> ${recipe.难度级别}
+                    </span>
+                </div>
+                
+                <div class="recipe-sections">
+                    <div class="ingredients">
+                        <h3><i class="fas fa-list"></i> 食材清单</h3>
+                        <ul class="ingredient-list">
+                            ${recipe.详细食材.map(item => `
+                                <li>
+                                    <span>${item.名称}</span>
+                                    <span>${item.数量}</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                    
+                    <div class="steps">
+                        <h3><i class="fas fa-tasks"></i> 烹饪步骤</h3>
+                        <ol class="step-list">
+                            ${recipe.烹饪步骤.map(step => `<li>${step}</li>`).join('')}
+                        </ol>
+                    </div>
+                </div>
+                
+                <div class="tips">
+                    <h3><i class="fas fa-lightbulb"></i> 小贴士</h3>
+                    <p>${recipe.小贴士}</p>
+                </div>
+            `;
+            
+            modal.style.display = 'block';
+        }
+
+        // 添加关闭模态框的事件处理
+        document.querySelector('.close-button').addEventListener('click', () => {
+            document.getElementById('recipe-modal').style.display = 'none';
+        });
+
+        // 点击模态框外部关闭
+        window.addEventListener('click', (e) => {
+            const modal = document.getElementById('recipe-modal');
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+
+        // 获取选中的偏好
+        function getSelectedPreferences() {
+            const activeTags = document.querySelectorAll('.preference-tag.active');
+            const tagValues = Array.from(activeTags).map(tag => tag.dataset.value);
+            
+            const inputValue = document.getElementById('preference-input').value.trim();
+            if (inputValue) {
+                tagValues.push(inputValue);
+            }
+            
+            return tagValues.join('、');
+        }
+
+        // 偏好标签点击事件
+        document.querySelectorAll('.preference-tag').forEach(tag => {
+            tag.addEventListener('click', () => {
+                tag.classList.toggle('active');
+            });
+        });
+
+        // 刷新按钮点击事件
+        document.getElementById('refresh-button').addEventListener('click', () => {
+            const preferences = getSelectedPreferences();
+            loadRecommendations(true, preferences);
+        });
     </script>
 </body>
 </html> 
