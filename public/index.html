@@ -92,11 +92,34 @@
 
         // 加载推荐菜品
         async function loadRecommendations(forceRefresh = false) {
-            const loadingIndicator = document.getElementById('loading-indicator');
+            // 获取或创建加载指示器
+            let loadingIndicator = document.getElementById('loading-indicator');
             const recipesContainer = document.getElementById('recipes-container');
             
+            // 如果加载指示器不存在，创建一个新的
+            if (!loadingIndicator) {
+                console.log('创建新的加载指示器');
+                loadingIndicator = document.createElement('div');
+                loadingIndicator.id = 'loading-indicator';
+                loadingIndicator.className = 'loading';
+                loadingIndicator.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 正在加载推荐菜品...';
+                
+                // 确保recipes容器存在
+                if (recipesContainer) {
+                    // 清空当前内容
+                    recipesContainer.innerHTML = '';
+                    // 添加加载指示器
+                    recipesContainer.appendChild(loadingIndicator);
+                } else {
+                    console.error('无法找到recipes容器');
+                    return; // 没有容器就不继续执行
+                }
+            }
+            
             // 确保显示加载指示器
-            loadingIndicator.style.display = 'block';
+            if (loadingIndicator) {
+                loadingIndicator.style.display = 'block';
+            }
             
             try {
                 // 添加一个随机参数避免缓存
@@ -123,6 +146,12 @@
                     throw new Error('推荐数据格式错误');
                 }
                 
+                // 确保recipesContainer仍然存在
+                if (!recipesContainer) {
+                    console.error('recipes容器在API请求过程中消失了');
+                    return;
+                }
+                
                 // 显示推荐
                 let html = '';
                 recommendations.forEach(recipe => {
@@ -144,19 +173,23 @@
                 recipesContainer.innerHTML = html;
             } catch (error) {
                 console.error('加载推荐失败:', error);
-                recipesContainer.innerHTML = `
-                    <div class="error-message">
-                        <p>加载推荐失败: ${error.message}</p>
-                        <button id="retry-btn">重试</button>
-                    </div>
-                `;
-                
-                document.getElementById('retry-btn')?.addEventListener('click', () => {
-                    loadRecommendations(true);
-                });
+                if (recipesContainer) {
+                    recipesContainer.innerHTML = `
+                        <div class="error-message">
+                            <p>加载推荐失败: ${error.message}</p>
+                            <button id="retry-btn">重试</button>
+                        </div>
+                    `;
+                    
+                    document.getElementById('retry-btn')?.addEventListener('click', () => {
+                        loadRecommendations(true);
+                    });
+                }
             } finally {
-                // 隐藏加载指示器
-                loadingIndicator.style.display = 'none';
+                // 隐藏加载指示器（如果存在）
+                if (loadingIndicator) {
+                    loadingIndicator.style.display = 'none';
+                }
             }
         }
 

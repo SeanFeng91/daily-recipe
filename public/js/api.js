@@ -103,12 +103,41 @@ export async function getDailyRecommendations(forceRefresh = false) {
     const endpoint = `/recommendations?${queryParams.toString()}`;
     console.log('请求推荐API:', endpoint);
     
-    const response = await fetchAPI(endpoint);
-    console.log('推荐API响应:', response);
-    return response;
+    // 使用更直接的fetch来获取更多控制
+    const requestUrl = `${API_BASE_URL}/api${endpoint}`;
+    console.log(`发送请求到: ${requestUrl}`);
+    
+    const startTime = Date.now();
+    const response = await fetch(requestUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    });
+    const endTime = Date.now();
+    console.log(`请求耗时: ${endTime - startTime}ms`);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`API返回错误状态码 ${response.status}:`, errorText);
+      throw new Error(`请求失败: ${response.status} - ${errorText.substring(0, 100)}`);
+    }
+    
+    const responseData = await response.json();
+    console.log('推荐API响应:', responseData);
+    
+    // 验证响应是数组
+    if (!Array.isArray(responseData)) {
+      console.error('API响应格式错误，不是数组:', responseData);
+      throw new Error('API响应格式错误: 预期数组，实际为 ' + typeof responseData);
+    }
+    
+    return responseData;
   } catch (error) {
     console.error('获取每日推荐失败:', error);
-    throw error;
+    // 重新抛出，但提供更多上下文
+    throw new Error(`获取推荐失败: ${error.message}`);
   }
 }
 
