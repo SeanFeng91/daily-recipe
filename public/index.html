@@ -22,13 +22,12 @@
         </div>
     </nav>
 
-    <main class="main-content">
+    <main class="main-content page-transition">
         <div class="date-header">
             <h1>今日推荐 <i class="fas fa-star" style="color: #ffd700;"></i></h1>
             <p id="current-date"></p>
-            <div class="api-status">
-                <button id="check-api" class="btn"><i class="fas fa-network-wired"></i> 检查API连接</button>
-                <span id="api-status-indicator"></span>
+            <div class="refresh-action">
+                <button id="force-refresh-btn" class="action-button"><i class="fas fa-sync-alt"></i> 刷新推荐</button>
             </div>
             <button id="loginBtn" class="btn" style="display: none;"><i class="fas fa-sign-in-alt"></i> 登录</button>
         </div>
@@ -56,7 +55,8 @@
 
         <div class="recipes-grid" id="recipes-container">
             <div class="loading" id="loading-indicator">
-                <i class="fas fa-spinner fa-spin"></i> 正在加载推荐菜品...
+                <div class="loading-spinner"></div>
+                <p>正在加载推荐菜品...</p>
             </div>
         </div>
         
@@ -65,11 +65,10 @@
             <pre id="api-status-content"></pre>
         </div>
 
-        <div id="api-status" style="margin-top: 20px; padding: 10px; background-color: #f9f9f9; border-radius: 5px;">
+        <div id="api-status" style="display: none; margin-top: 20px; padding: 10px; background-color: #f9f9f9; border-radius: 5px;">
             <h4>API状态</h4>
             <div id="api-status-content">正在检查...</div>
             <button id="check-api-status-btn">检查API状态</button>
-            <button id="force-refresh-btn" style="margin-left: 10px; background-color: #ffcc00;">强制刷新推荐</button>
         </div>
     </main>
 
@@ -82,8 +81,24 @@
             </div>
             <div class="modal-body" id="modal-body">
                 <!-- 动态生成的详情内容将在这里显示 -->
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <p>正在加载详情...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="action-button" id="save-recipe-btn"><i class="fas fa-heart"></i> 收藏菜谱</button>
+                <button class="action-button secondary" id="share-recipe-btn"><i class="fas fa-share-alt"></i> 分享</button>
             </div>
         </div>
+    </div>
+
+    <!-- 移动端底部导航 -->
+    <div class="mobile-nav" id="mobile-nav" style="display: none;">
+        <a href="/" class="active"><i class="fas fa-home"></i> 首页</a>
+        <a href="/history.html"><i class="fas fa-calendar-alt"></i> 历史</a>
+        <a href="/gallery.html"><i class="fas fa-camera"></i> 作品</a>
+        <a href="/profile.html"><i class="fas fa-user"></i> 我的</a>
     </div>
 
     <script type="module">
@@ -97,35 +112,88 @@
             day: 'numeric'
         });
 
-        // API状态检查
-        document.getElementById('check-api').addEventListener('click', async () => {
-            const statusIndicator = document.getElementById('api-status-indicator');
-            const statusDetails = document.getElementById('api-status-details');
-            const statusContent = document.getElementById('api-status-content');
+        // 获取选中的偏好
+        function getSelectedPreferences() {
+            const activeTags = document.querySelectorAll('.preference-tag.active');
+            const tagValues = Array.from(activeTags).map(tag => tag.dataset.value);
             
-            statusIndicator.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 检查中...';
-            statusDetails.style.display = 'none';
-            
-            try {
-                const diagnosticResults = await diagnoseAPI();
-                
-                if (diagnosticResults.tests.network.success && diagnosticResults.tests.health.success) {
-                    statusIndicator.innerHTML = '<i class="fas fa-check-circle" style="color: green;"></i> API连接正常';
-                } else {
-                    statusIndicator.innerHTML = '<i class="fas fa-exclamation-circle" style="color: red;"></i> API连接异常';
-                }
-                
-                statusContent.textContent = JSON.stringify(diagnosticResults, null, 2);
-                statusDetails.style.display = 'block';
-            } catch (error) {
-                statusIndicator.innerHTML = '<i class="fas fa-times-circle" style="color: red;"></i> 检查失败';
-                statusContent.textContent = error.message;
-                statusDetails.style.display = 'block';
+            const inputValue = document.getElementById('preference-input').value.trim();
+            if (inputValue) {
+                tagValues.push(inputValue);
             }
-        });
+            
+            return tagValues;
+        }
+
+        // 保存用户偏好到本地存储
+        function saveUserPreferences() {
+            const selectedPreferences = getSelectedPreferences();
+            const inputValue = document.getElementById('preference-input').value.trim();
+            
+            const preferencesData = {
+                tags: selectedPreferences,
+                inputText: inputValue,
+                savedAt: new Date().toISOString()
+            };
+            
+            localStorage.setItem('userPreferences', JSON.stringify(preferencesData));
+            console.log('用户偏好已保存:', preferencesData);
+        }
+
+        // 从本地存储加载用户偏好
+        function loadUserPreferences() {
+            try {
+                const savedPreferences = localStorage.getItem('userPreferences');
+                if (savedPreferences) {
+                    const preferencesData = JSON.parse(savedPreferences);
+                    console.log('加载已保存的偏好:', preferencesData);
+                    
+                    // 设置输入框值
+                    if (preferencesData.inputText) {
+                        document.getElementById('preference-input').value = preferencesData.inputText;
+                    }
+                    
+                    // 设置标签选中状态
+                    if (preferencesData.tags && Array.isArray(preferencesData.tags)) {
+                        document.querySelectorAll('.preference-tag').forEach(tag => {
+                            if (preferencesData.tags.includes(tag.dataset.value)) {
+                                tag.classList.add('active');
+                            }
+                        });
+                    }
+                    
+                    return true;
+                }
+            } catch (error) {
+                console.error('加载用户偏好失败:', error);
+            }
+            return false;
+        }
 
         // 加载推荐菜品
         async function loadRecommendations(forceRefresh = false, preferences = '') {
+            // 如果不是强制刷新，尝试从本地存储获取当天的推荐
+            if (!forceRefresh) {
+                const today = new Date().toISOString().split('T')[0]; // 当前日期，格式为YYYY-MM-DD
+                const storedData = localStorage.getItem('dailyRecommendations');
+                
+                if (storedData) {
+                    try {
+                        const parsedData = JSON.parse(storedData);
+                        // 检查是否是今天的数据
+                        if (parsedData.date === today) {
+                            console.log('从本地存储加载今天的推荐');
+                            displayRecommendations(parsedData.recommendations);
+                            return; // 提前返回，不再请求API
+                        } else {
+                            console.log('本地存储的推荐不是今天的，需要刷新');
+                        }
+                    } catch (error) {
+                        console.error('解析本地存储数据失败:', error);
+                    }
+                }
+            }
+
             // 获取或创建加载指示器
             let loadingIndicator = document.getElementById('loading-indicator');
             const recipesContainer = document.getElementById('recipes-container');
@@ -136,7 +204,10 @@
                 loadingIndicator = document.createElement('div');
                 loadingIndicator.id = 'loading-indicator';
                 loadingIndicator.className = 'loading';
-                loadingIndicator.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 正在加载推荐菜品...';
+                loadingIndicator.innerHTML = `
+                    <div class="loading-spinner"></div>
+                    <p>正在加载推荐菜品...</p>
+                `;
                 
                 // 确保recipes容器存在
                 if (recipesContainer) {
@@ -148,11 +219,24 @@
                     console.error('无法找到recipes容器');
                     return; // 没有容器就不继续执行
                 }
-            }
-            
-            // 确保显示加载指示器
-            if (loadingIndicator) {
-                loadingIndicator.style.display = 'block';
+            } else {
+                // 使用骨架屏加载效果替代简单的加载图标
+                recipesContainer.innerHTML = '';
+                
+                // 添加3个骨架卡片
+                for (let i = 0; i < 3; i++) {
+                    recipesContainer.innerHTML += `
+                        <div class="recipe-card">
+                            <div class="skeleton" style="height: 200px;"></div>
+                            <div class="recipe-content">
+                                <div class="skeleton skeleton-title"></div>
+                                <div class="skeleton skeleton-text"></div>
+                                <div class="skeleton skeleton-text"></div>
+                                <div class="skeleton skeleton-text"></div>
+                            </div>
+                        </div>
+                    `;
+                }
             }
             
             try {
@@ -181,6 +265,16 @@
                     throw new Error('推荐数据格式错误');
                 }
                 
+                // 存储到本地存储
+                const today = new Date().toISOString().split('T')[0];
+                localStorage.setItem('dailyRecommendations', JSON.stringify({
+                    date: today,
+                    recommendations: recommendations
+                }));
+
+                // 添加到历史记录
+                saveToHistory(recommendations);
+                
                 // 确保recipesContainer仍然存在
                 if (!recipesContainer) {
                     console.error('recipes容器在API请求过程中消失了');
@@ -188,43 +282,7 @@
                 }
                 
                 // 显示推荐
-                let html = '';
-                recommendations.forEach((recipe, index) => {
-                    // 使用生成的图片或默认图片
-                    const defaultImage = `https://source.unsplash.com/featured/300x200?food,chinese,cooking&sig=${Math.floor(Math.random() * 1000)}`;
-                    const imageUrl = recipe.图片 || defaultImage;
-                    
-                    html += `
-                        <div class="recipe-card">
-                            <img src="${imageUrl}" alt="${recipe.菜名}" class="recipe-image" 
-                                onerror="this.onerror=null; this.src='${defaultImage}'">
-                            <div class="recipe-content">
-                                <h2 class="recipe-title">${recipe.菜名}</h2>
-                                <p class="recipe-description">${recipe.简短描述}</p>
-                                <div class="tags">
-                                    ${recipe.主要食材.map(item => `<span class="tag">${item}</span>`).join('')}
-                                </div>
-                                <div class="recipe-info">
-                                    <div class="recipe-stats">
-                                        <span class="stat"><i class="fas fa-clock"></i> ${recipe.所需时间}</span>
-                                        <span class="stat"><i class="fas fa-fire"></i> ${recipe.难度级别}</span>
-                                    </div>
-                                    <button class="action-button view-details" data-index="${index}">查看详情</button>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                });
-                
-                recipesContainer.innerHTML = html;
-
-                // 添加查看详情事件
-                document.querySelectorAll('.view-details').forEach(button => {
-                    button.addEventListener('click', () => {
-                        const index = button.dataset.index;
-                        showRecipeDetails(recommendations[index]);
-                    });
-                });
+                displayRecommendations(recommendations);
             } catch (error) {
                 console.error('加载推荐失败:', error);
                 if (recipesContainer) {
@@ -245,6 +303,78 @@
                     loadingIndicator.style.display = 'none';
                 }
             }
+        }
+
+        // 将推荐菜单保存到历史记录
+        function saveToHistory(recommendations) {
+            try {
+                // 获取已有的历史记录
+                const historyData = JSON.parse(localStorage.getItem('recipesHistory') || '[]');
+                const today = new Date().toISOString().split('T')[0];
+                
+                // 检查今天是否已经有记录
+                const todayEntry = historyData.find(entry => entry.date === today);
+                
+                if (todayEntry) {
+                    // 更新今天的记录，添加新的推荐（避免重复）
+                    recommendations.forEach(recipe => {
+                        const exists = todayEntry.recipes.some(r => r.菜名 === recipe.菜名);
+                        if (!exists) {
+                            todayEntry.recipes.push(recipe);
+                        }
+                    });
+                } else {
+                    // 添加新的一天
+                    historyData.push({
+                        date: today,
+                        recipes: [...recommendations]
+                    });
+                }
+                
+                // 保存回本地存储
+                localStorage.setItem('recipesHistory', JSON.stringify(historyData));
+                console.log('历史记录已更新');
+            } catch (error) {
+                console.error('保存历史记录失败:', error);
+            }
+        }
+
+        // 显示推荐菜品
+        function displayRecommendations(recommendations) {
+            const recipesContainer = document.getElementById('recipes-container');
+            if (!recipesContainer) return;
+            
+            let html = '';
+            recommendations.forEach((recipe, index) => {
+                // 使用生成的图片或默认图片
+                const defaultImage = `https://source.unsplash.com/featured/300x200?food,chinese,cooking&sig=${Math.floor(Math.random() * 1000)}`;
+                const imageUrl = recipe.图片 || defaultImage;
+                
+                html += `
+                    <div class="recipe-card">
+                        <img src="${imageUrl}" alt="${recipe.菜名}" class="recipe-image" 
+                            onerror="this.onerror=null; this.src='${defaultImage}'">
+                        <div class="recipe-content">
+                            <h2 class="recipe-title">${recipe.菜名}</h2>
+                            <p class="recipe-description">${recipe.简短描述}</p>
+                            <div class="tags">
+                                ${recipe.主要食材.map(item => `<span class="tag">${item}</span>`).join('')}
+                            </div>
+                            <div class="recipe-info">
+                                <div class="recipe-stats">
+                                    <span class="stat"><i class="fas fa-clock"></i> ${recipe.所需时间}</span>
+                                    <span class="stat"><i class="fas fa-fire"></i> ${recipe.难度级别}</span>
+                                </div>
+                                <button class="action-button" onclick="showRecipeDetails(${JSON.stringify(recipe).replace(/"/g, '&quot;')})">
+                                    查看详情
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            recipesContainer.innerHTML = html;
         }
 
         // 检查是否已登录（通过尝试获取推荐来判断）
@@ -275,64 +405,37 @@
             }
         });
 
-        // API状态检查函数
-        async function checkAPIStatus() {
-            const statusContent = document.getElementById('api-status-content');
-            statusContent.innerHTML = '正在检查...';
-            
-            try {
-                // 检查基本健康状态
-                const response = await fetch(`${CONFIG.current.apiBase}/api/health`);
-                const health = await response.json();
-                
-                statusContent.innerHTML = `
-                    <p><strong>API状态:</strong> ${health.status}</p>
-                    <p><strong>JWT密钥设置:</strong> ${health.env.hasJwtSecret ? '✅' : '❌'}</p>
-                    <p><strong>GROQ密钥设置:</strong> ${health.env.hasGroqKey ? '✅' : '❌'}</p>
-                    <p><strong>时间戳:</strong> ${health.timestamp}</p>
-                    <p><button id="test-recommendations-btn">测试推荐API</button></p>
-                `;
-                
-                document.getElementById('test-recommendations-btn')?.addEventListener('click', testRecommendationAPI);
-            } catch (error) {
-                statusContent.innerHTML = `<p>检查失败: ${error.message}</p>`;
-            }
-        }
-
-        // 测试推荐API函数
-        async function testRecommendationAPI() {
-            const statusContent = document.getElementById('api-status-content');
-            statusContent.innerHTML += '<p>正在测试推荐API...</p>';
-            
-            try {
-                const startTime = Date.now();
-                // 使用时间戳参数避免缓存
-                const response = await fetch(`${CONFIG.current.apiBase}/api/recommendations?t=${Date.now()}&nocache=true`);
-                const recommendations = await response.json();
-                const endTime = Date.now();
-                
-                statusContent.innerHTML += `
-                    <p>推荐API响应时间: ${endTime - startTime}ms</p>
-                    <p>推荐数量: ${Array.isArray(recommendations) ? recommendations.length : '未知'}</p>
-                    <p>内容样例: ${JSON.stringify(recommendations).substring(0, 100)}...</p>
-                    <p><button id="refresh-recommendations-btn">刷新页面推荐</button></p>
-                `;
-                
-                document.getElementById('refresh-recommendations-btn')?.addEventListener('click', () => loadRecommendations(true));
-            } catch (error) {
-                statusContent.innerHTML += `<p>推荐API测试失败: ${error.message}</p>`;
-            }
-        }
-
-        // 绑定API状态检查按钮
-        document.getElementById('check-api-status-btn')?.addEventListener('click', checkAPIStatus);
-        
         // 绑定强制刷新按钮
         document.getElementById('force-refresh-btn')?.addEventListener('click', () => loadRecommendations(true));
 
-        // 页面加载时执行加载推荐
+        // 页面加载时执行
         window.addEventListener('DOMContentLoaded', () => {
-            loadRecommendations();
+            // 尝试加载用户偏好
+            const hasPreferences = loadUserPreferences();
+            
+            // 不管有没有偏好都加载推荐，但如果有偏好则按偏好加载
+            if (hasPreferences) {
+                const preferences = getSelectedPreferences().join('、');
+                loadRecommendations(false, preferences);
+            } else {
+                loadRecommendations();
+            }
+
+            // 检测屏幕宽度，显示或隐藏移动导航
+            function checkMobileNav() {
+                const mobileNav = document.getElementById('mobile-nav');
+                if (window.innerWidth <= 768) {
+                    mobileNav.style.display = 'flex';
+                } else {
+                    mobileNav.style.display = 'none';
+                }
+            }
+            
+            // 初始检查
+            checkMobileNav();
+            
+            // 窗口大小变化时重新检查
+            window.addEventListener('resize', checkMobileNav);
         });
 
         // 将CONFIG暴露到全局，以便在其他地方使用
@@ -343,93 +446,241 @@
             const modal = document.getElementById('recipe-modal');
             const modalBody = document.getElementById('modal-body');
             
+            // 先显示加载状态
+            modalBody.innerHTML = `
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <p>正在加载详情...</p>
+                </div>
+            `;
+            
+            // 显示模态框，添加动画类
+            modal.style.display = 'block';
+            modal.classList.add('modal-open');
+            
             // 使用生成的图片或默认图片
             const defaultImage = `https://source.unsplash.com/featured/800x400?food,chinese,cooking&sig=${Math.floor(Math.random() * 1000)}`;
             const imageUrl = recipe.图片 || defaultImage;
             
-            modalBody.innerHTML = `
-                <img src="${imageUrl}" alt="${recipe.菜名}" 
-                    style="width: 100%; height: 300px; object-fit: cover; border-radius: 10px; margin-bottom: 1.5rem;" 
-                    onerror="this.onerror=null; this.src='${defaultImage}'">
-                
-                <h3 style="font-size: 1.8rem; margin-bottom: 0.5rem;">${recipe.菜名}</h3>
-                <p style="color: #666; margin-bottom: 1.5rem;">${recipe.简短描述}</p>
-                
-                <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
-                    <span style="background: #e9ecef; padding: 0.5rem 1rem; border-radius: 20px;">
-                        <i class="fas fa-clock"></i> ${recipe.所需时间}
-                    </span>
-                    <span style="background: #e9ecef; padding: 0.5rem 1rem; border-radius: 20px;">
-                        <i class="fas fa-fire"></i> ${recipe.难度级别}
-                    </span>
-                </div>
-                
-                <div class="recipe-sections">
-                    <div class="ingredients">
-                        <h3><i class="fas fa-list"></i> 食材清单</h3>
-                        <ul class="ingredient-list">
-                            ${recipe.详细食材.map(item => `
-                                <li>
-                                    <span>${item.名称}</span>
-                                    <span>${item.数量}</span>
-                                </li>
-                            `).join('')}
-                        </ul>
+            // 预加载图片
+            const img = new Image();
+            img.onload = function() {
+                // 图片加载完成后更新内容
+                modalBody.innerHTML = `
+                    <img src="${imageUrl}" alt="${recipe.菜名}" 
+                        class="recipe-detail-image" 
+                        onerror="this.onerror=null; this.src='${defaultImage}'">
+                    
+                    <h3 class="recipe-detail-title">${recipe.菜名}</h3>
+                    <p class="recipe-detail-desc">${recipe.简短描述}</p>
+                    
+                    <div class="recipe-detail-stats">
+                        <span class="stat"><i class="fas fa-clock"></i> ${recipe.所需时间}</span>
+                        <span class="stat"><i class="fas fa-fire"></i> ${recipe.难度级别}</span>
                     </div>
                     
-                    <div class="steps">
-                        <h3><i class="fas fa-tasks"></i> 烹饪步骤</h3>
-                        <ol class="step-list">
-                            ${recipe.烹饪步骤.map(step => `<li>${step}</li>`).join('')}
-                        </ol>
+                    <div class="recipe-sections">
+                        <div class="ingredients">
+                            <h3><i class="fas fa-list"></i> 食材清单</h3>
+                            <ul class="ingredient-list">
+                                ${recipe.详细食材.map(item => `
+                                    <li>
+                                        <span>${item.名称}</span>
+                                        <span>${item.数量}</span>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                        
+                        <div class="steps">
+                            <h3><i class="fas fa-tasks"></i> 烹饪步骤</h3>
+                            <ol class="step-list">
+                                ${recipe.烹饪步骤.map(step => `<li>${step}</li>`).join('')}
+                            </ol>
+                        </div>
                     </div>
-                </div>
+                    
+                    <div class="tips">
+                        <h3><i class="fas fa-lightbulb"></i> 小贴士</h3>
+                        <p>${recipe.小贴士}</p>
+                    </div>
+                `;
                 
-                <div class="tips">
-                    <h3><i class="fas fa-lightbulb"></i> 小贴士</h3>
-                    <p>${recipe.小贴士}</p>
-                </div>
-            `;
+                // 设置当前菜谱数据到按钮
+                const saveBtn = document.getElementById('save-recipe-btn');
+                const shareBtn = document.getElementById('share-recipe-btn');
+                
+                if (saveBtn) {
+                    saveBtn.dataset.recipeId = recipe.id || '';
+                    
+                    // 检查是否已收藏
+                    const savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+                    const isSaved = savedRecipes.some(r => r.菜名 === recipe.菜名);
+                    
+                    if (isSaved) {
+                        saveBtn.innerHTML = '<i class="fas fa-heart" style="color: #ff6b6b;"></i> 已收藏';
+                        saveBtn.classList.add('saved');
+                    } else {
+                        saveBtn.innerHTML = '<i class="far fa-heart"></i> 收藏菜谱';
+                        saveBtn.classList.remove('saved');
+                    }
+                    
+                    // 添加收藏事件
+                    saveBtn.onclick = function() {
+                        toggleSaveRecipe(recipe);
+                    };
+                }
+                
+                if (shareBtn) {
+                    // 添加分享事件
+                    shareBtn.onclick = function() {
+                        shareRecipe(recipe);
+                    };
+                }
+            };
             
-            modal.style.display = 'block';
+            img.onerror = function() {
+                // 图片加载失败时使用默认图片
+                img.src = defaultImage;
+            };
+            
+            img.src = imageUrl;
+        }
+        
+        // 收藏/取消收藏菜谱
+        function toggleSaveRecipe(recipe) {
+            const saveBtn = document.getElementById('save-recipe-btn');
+            const savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+            
+            // 检查是否已收藏
+            const index = savedRecipes.findIndex(r => r.菜名 === recipe.菜名);
+            
+            if (index === -1) {
+                // 添加到收藏
+                savedRecipes.push(recipe);
+                localStorage.setItem('savedRecipes', JSON.stringify(savedRecipes));
+                
+                saveBtn.innerHTML = '<i class="fas fa-heart" style="color: #ff6b6b;"></i> 已收藏';
+                saveBtn.classList.add('saved');
+                
+                // 显示提示
+                showToast('已添加到收藏');
+            } else {
+                // 从收藏中移除
+                savedRecipes.splice(index, 1);
+                localStorage.setItem('savedRecipes', JSON.stringify(savedRecipes));
+                
+                saveBtn.innerHTML = '<i class="far fa-heart"></i> 收藏菜谱';
+                saveBtn.classList.remove('saved');
+                
+                // 显示提示
+                showToast('已从收藏中移除');
+            }
+        }
+        
+        // 分享菜谱
+        function shareRecipe(recipe) {
+            // 检查是否支持网页分享API
+            if (navigator.share) {
+                navigator.share({
+                    title: recipe.菜名,
+                    text: recipe.简短描述,
+                    url: window.location.href
+                })
+                .then(() => showToast('分享成功'))
+                .catch(error => {
+                    console.error('分享失败:', error);
+                    showToast('分享失败，请手动复制链接分享');
+                });
+            } else {
+                // 不支持分享API，提示复制链接
+                const tempInput = document.createElement('input');
+                document.body.appendChild(tempInput);
+                tempInput.value = window.location.href;
+                tempInput.select();
+                document.execCommand('copy');
+                document.body.removeChild(tempInput);
+                
+                showToast('链接已复制，请手动分享');
+            }
+        }
+        
+        // 显示提示消息
+        function showToast(message, type = 'success') {
+            // 移除现有的toast
+            const existingToast = document.querySelector('.toast');
+            if (existingToast) {
+                existingToast.remove();
+            }
+            
+            // 创建新的toast
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            
+            document.body.appendChild(toast);
+            
+            // 添加显示类
+            setTimeout(() => toast.classList.add('show'), 10);
+            
+            // 自动移除
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
         }
 
         // 添加关闭模态框的事件处理
         document.querySelector('.close-button').addEventListener('click', () => {
-            document.getElementById('recipe-modal').style.display = 'none';
+            const modal = document.getElementById('recipe-modal');
+            modal.classList.remove('modal-open');
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 300);
         });
 
         // 点击模态框外部关闭
         window.addEventListener('click', (e) => {
             const modal = document.getElementById('recipe-modal');
             if (e.target === modal) {
-                modal.style.display = 'none';
+                modal.classList.remove('modal-open');
+                setTimeout(() => {
+                    modal.style.display = 'none';
+                }, 300);
             }
         });
-
-        // 获取选中的偏好
-        function getSelectedPreferences() {
-            const activeTags = document.querySelectorAll('.preference-tag.active');
-            const tagValues = Array.from(activeTags).map(tag => tag.dataset.value);
-            
-            const inputValue = document.getElementById('preference-input').value.trim();
-            if (inputValue) {
-                tagValues.push(inputValue);
-            }
-            
-            return tagValues.join('、');
-        }
 
         // 偏好标签点击事件
         document.querySelectorAll('.preference-tag').forEach(tag => {
             tag.addEventListener('click', () => {
                 tag.classList.toggle('active');
+                // 点击标签时自动保存偏好
+                saveUserPreferences();
             });
         });
 
+        // 偏好输入框输入事件
+        document.getElementById('preference-input').addEventListener('input', debounce(() => {
+            saveUserPreferences();
+        }, 500));
+
+        // 防抖函数
+        function debounce(func, wait) {
+            let timeout;
+            return function() {
+                const context = this;
+                const args = arguments;
+                clearTimeout(timeout);
+                timeout = setTimeout(() => {
+                    func.apply(context, args);
+                }, wait);
+            };
+        }
+
         // 刷新按钮点击事件
         document.getElementById('refresh-button').addEventListener('click', () => {
-            const preferences = getSelectedPreferences();
+            const preferences = getSelectedPreferences().join('、');
+            saveUserPreferences();
             loadRecommendations(true, preferences);
         });
     </script>
