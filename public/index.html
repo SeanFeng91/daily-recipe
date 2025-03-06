@@ -183,8 +183,13 @@
                         // 检查是否是今天的数据
                         if (parsedData.date === today) {
                             console.log('从本地存储加载今天的推荐');
-                            displayRecommendations(parsedData.recommendations);
-                            return; // 提前返回，不再请求API
+                            // 确保显示3个推荐
+                            if (parsedData.recommendations && parsedData.recommendations.length < 3) {
+                                console.log('本地存储的推荐数量不足3个，需要刷新');
+                            } else {
+                                displayRecommendations(parsedData.recommendations);
+                                return; // 提前返回，不再请求API
+                            }
                         } else {
                             console.log('本地存储的推荐不是今天的，需要刷新');
                         }
@@ -257,12 +262,70 @@
                 
                 // 带上时间戳和强制刷新参数
                 const timestamp = Date.now();
-                const recommendations = await getDailyRecommendations(forceRefresh, preferences);
+                let recommendations = await getDailyRecommendations(forceRefresh, preferences);
                 console.log('获取到的推荐:', recommendations);
                 
                 // 检查推荐是否为数组
                 if (!Array.isArray(recommendations)) {
                     throw new Error('推荐数据格式错误');
+                }
+
+                // 确保至少有3个推荐
+                if (recommendations.length < 3) {
+                    console.warn(`获取的推荐数量不足3个，当前数量：${recommendations.length}`);
+                    // 如果数量不足，尝试再次获取更多推荐
+                    try {
+                        const moreRecommendations = await getDailyRecommendations(true, "");
+                        if (Array.isArray(moreRecommendations) && moreRecommendations.length > 0) {
+                            // 过滤掉重复的推荐
+                            const existingNames = recommendations.map(r => r.菜名);
+                            const newRecommendations = moreRecommendations.filter(r => !existingNames.includes(r.菜名));
+                            
+                            // 合并推荐列表
+                            recommendations = [...recommendations, ...newRecommendations];
+                            
+                            // 如果仍然不足3个，生成一些默认推荐
+                            if (recommendations.length < 3) {
+                                const defaultRecommendations = [
+                                    {
+                                        菜名: "家常红烧肉",
+                                        简短描述: "经典家常菜，肥而不腻，口感鲜美",
+                                        主要食材: ["五花肉", "生姜", "葱", "酱油"],
+                                        所需时间: "40分钟",
+                                        难度级别: "中等"
+                                    },
+                                    {
+                                        菜名: "清蒸鲈鱼",
+                                        简短描述: "鲜嫩可口，营养丰富的家常鱼料理",
+                                        主要食材: ["鲈鱼", "姜", "葱", "蒸鱼豉油"],
+                                        所需时间: "25分钟",
+                                        难度级别: "简单"
+                                    },
+                                    {
+                                        菜名: "蒜蓉小白菜",
+                                        简短描述: "清爽开胃，营养健康的素食选择",
+                                        主要食材: ["小白菜", "大蒜", "食盐", "食用油"],
+                                        所需时间: "10分钟",
+                                        难度级别: "简单"
+                                    }
+                                ];
+                                
+                                // 添加缺少的推荐直到达到3个
+                                for (let i = 0; recommendations.length < 3 && i < defaultRecommendations.length; i++) {
+                                    if (!existingNames.includes(defaultRecommendations[i].菜名)) {
+                                        recommendations.push(defaultRecommendations[i]);
+                                    }
+                                }
+                            }
+                            
+                            // 限制最多显示3个推荐
+                            if (recommendations.length > 3) {
+                                recommendations = recommendations.slice(0, 3);
+                            }
+                        }
+                    } catch (moreError) {
+                        console.error('获取更多推荐失败:', moreError);
+                    }
                 }
                 
                 // 存储到本地存储

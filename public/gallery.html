@@ -286,6 +286,16 @@
             }
         }
 
+        // 将文件转换为Base64字符串
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
         // 加载作品集
         async function loadGallery() {
             const container = document.getElementById('gallery-container');
@@ -376,10 +386,12 @@
                 submitBtn.disabled = true;
 
                 try {
-                    const formData = new FormData();
                     const selectedFile = fileInput.files[0];
                     const recipeName = document.getElementById('recipe-name').value;
                     const description = document.getElementById('recipe-description').value;
+                    
+                    // 将图片转换为Base64字符串
+                    const imageBase64 = await fileToBase64(selectedFile);
                     
                     // 创建包含所有信息的对象
                     const newGalleryItem = {
@@ -387,7 +399,7 @@
                         recipeName: recipeName,
                         description: description,
                         timestamp: new Date().toISOString(),
-                        imageUrl: URL.createObjectURL(selectedFile) // 创建本地文件URL
+                        imageUrl: imageBase64 // 存储Base64图片数据
                     };
                     
                     // 保存到本地存储
@@ -395,6 +407,7 @@
                     
                     // 尝试上传到API (如果失败也没关系，已经保存到本地了)
                     try {
+                        const formData = new FormData();
                         formData.append('userId', getCurrentUserId());
                         formData.append('image', selectedFile);
                         formData.append('recipeName', recipeName);
